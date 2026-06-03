@@ -18,8 +18,7 @@
         ],
         "experiments": {
             "typedRoutes": true,
-            "reactCompiler": true,
-            "baseUrl": "/ossai-web"
+            "reactCompiler": true
         }
     }
 }

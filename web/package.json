@@ -2,7 +2,7 @@
     "name": "ossai_web",
     "main": "expo-router/entry",
     "version": "1.0.0",
-    "homepage": "https://ossai-ldn.github.io/ossai-web",
+    "homepage": "https://ossai.co.uk",
     "scripts": {
         "predeploy": "npm run build",
         "build": "npx expo export --platform web",
