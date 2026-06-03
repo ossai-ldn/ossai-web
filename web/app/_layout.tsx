@@ -9,17 +9,23 @@ export default function RootLayout() {
 
     useEffect(() => {
         // 3. Start your custom fade-out animation
-        Animated.sequence([
+        const animation = Animated.sequence([
             Animated.delay(2000), // Keep overlay visible for 2 seconds
             Animated.timing(fadeAnim, {
                 toValue: 0,
                 duration: 500,
                 useNativeDriver: false, // Note: On web, useNativeDriver doesn't matter much, but good practice
             }),
-        ]).start(() => {
-            setIsOverlayVisible(false); // Unmount when done
+        ]);
+
+        animation.start(({ finished }) => {
+            if (finished) {
+                setIsOverlayVisible(false); // Unmount when done
+            }
         });
-    }, []);
+
+        return () => animation.stop();
+    }, [fadeAnim]);
 
 
     return (
