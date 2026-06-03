@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -14,32 +14,61 @@ import {
 } from 'react-native';
 
 const HEADER_HEIGHT = 110;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ERROR_RESET_DELAY_MS = 2000;
+const SIGNUP_DELAY_MS = 1500;
+const SUCCESS_RESET_DELAY_MS = 3000;
+type Status = 'idle' | 'loading' | 'success' | 'error';
 
 export default function Index() {
     // 1. STATE DEFINITIONS
     const [email, setEmail] = useState('');
     // Status: 'idle' | 'loading' | 'success' | 'error'
-    const [status, setStatus] = useState('idle');
+    const [status, setStatus] = useState<Status>('idle');
+    const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+    const clearTimers = () => {
+        timersRef.current.forEach(clearTimeout);
+        timersRef.current = [];
+    };
+    const scheduleTimer = (callback: () => void, delay: number) => {
+        const timeoutId = setTimeout(() => {
+            timersRef.current = timersRef.current.filter((id) => id !== timeoutId);
+            callback();
+        }, delay);
+
+        timersRef.current.push(timeoutId);
+    };
+
+    useEffect(() => {
+        return () => {
+            timersRef.current.forEach(clearTimeout);
+            timersRef.current = [];
+        };
+    }, []);
 
     // 2. LOGIC HANDLERS
     const handleJoin = () => {
         if (status === 'loading') return;
 
+        clearTimers();
+        const normalizedEmail = email.trim();
+
         // Basic Validation
-        if (!email.includes('@') || !email.includes('.')) {
+        if (!EMAIL_PATTERN.test(normalizedEmail)) {
             setStatus('error');
-            setTimeout(() => setStatus('idle'), 2000);
+            scheduleTimer(() => setStatus('idle'), ERROR_RESET_DELAY_MS);
             return;
         }
 
         // Simulate API Call
+        setEmail(normalizedEmail);
         setStatus('loading');
 
-        setTimeout(() => {
+        scheduleTimer(() => {
             setStatus('success');
             setEmail(''); // Clear input
-            setTimeout(() => setStatus('idle'), 3000);
-        }, 1500);
+            scheduleTimer(() => setStatus('idle'), SUCCESS_RESET_DELAY_MS);
+        }, SIGNUP_DELAY_MS);
     };
 
     const getStatusColor = () => {
@@ -116,7 +145,10 @@ export default function Index() {
                             value={email}
                             onChangeText={(text) => {
                                 setEmail(text);
-                                if (status === 'error') setStatus('idle');
+                                if (status === 'error') {
+                                    clearTimers();
+                                    setStatus('idle');
+                                }
                             }}
                         />
 
