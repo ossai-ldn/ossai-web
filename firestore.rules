@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Public newsletter/signup capture from the landing page.
+    // Clients may only CREATE well-formed documents; they can never read,
+    // update, delete, or enumerate signups.
+    match /signups/{id} {
+      allow create: if isValidSignup(request.resource.data);
+      allow read, update, delete: if false;
+    }
+
+    // Outbound mail queue consumed by the "Trigger Email from Firestore"
+    // extension. Written only by the Cloud Function (Admin SDK bypasses rules);
+    // never accessible to clients.
+    match /mail/{id} {
+      allow read, write: if false;
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+function isValidSignup(data) {
+  return data.keys().hasOnly(['contact', 'type', 'source', 'userAgent', 'createdAt'])
+    && data.contact is string
+    && data.contact.size() > 3
+    && data.contact.size() < 200
+    && data.type in ['email', 'phone']
+    && data.source is string
+    && data.source.size() < 100
+    && data.userAgent is string
+    && data.userAgent.size() < 1000
+    && data.createdAt == request.time;
+}
