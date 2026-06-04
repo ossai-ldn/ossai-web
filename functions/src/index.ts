@@ -32,7 +32,9 @@ interface SignupDoc {
 export const sendWelcome = onDocumentCreated(
   {
     document: 'signups/{id}',
-    region: 'us-central1',
+    // Must match the Firestore database location (London / europe-west2) — a
+    // Firestore trigger has to live in the same region as the database.
+    region: 'europe-west2',
     secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN],
   },
   async (event) => {

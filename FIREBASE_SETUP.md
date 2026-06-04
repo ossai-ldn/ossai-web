@@ -25,6 +25,14 @@ npm install -g firebase-tools
 firebase login
 ```
 
+> **Region:** this project standardizes on **London — `europe-west2`**. The
+> Firestore database, the Trigger Email extension, and the `sendWelcome`
+> function must all use `europe-west2` (a Firestore event trigger must be in the
+> same region as its database). If the database was created in another location
+> (e.g. the `eur3` multi-region), delete it while empty and recreate it in
+> `europe-west2`: Firebase console → Firestore → create database → location
+> **europe-west2 (London)**. A Firestore location is permanent once chosen.
+
 ## 1. Publish Firestore security rules
 
 The rules allow the public to **create** (well-formed) `signups` docs only —
@@ -44,6 +52,9 @@ firebase deploy --only firestore:rules
 
 Firebase console → Extensions → install **Trigger Email from Firestore**:
 
+- **Cloud Functions location:** `europe-west2` (London) — must match the
+  Firestore database location, otherwise install fails with
+  `Database '(default)' does not exist in region …`.
 - **Email documents collection:** `mail`
 - **SMTP connection URI:** your SendGrid SMTP, e.g.
   `smtps://apikey:<SENDGRID_API_KEY>@smtp.sendgrid.net:465`
