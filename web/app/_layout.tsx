@@ -1,10 +1,12 @@
 import { BlurView } from 'expo-blur';
-import { Slot } from 'expo-router';
+import { Slot, usePathname } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, View } from 'react-native';
 import SiteHeader from '../components/SiteHeader';
 
 export default function RootLayout() {
+    const pathname = usePathname();
+    const isHome = pathname === '/' || pathname === '';
     const [isOverlayVisible, setIsOverlayVisible] = useState(true);
     const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -31,7 +33,7 @@ export default function RootLayout() {
 
     return (
         <View style={{ flex: 1 }}>
-            <SiteHeader />
+            {!isHome && <SiteHeader />}
             <Slot />
 
             {isOverlayVisible && (

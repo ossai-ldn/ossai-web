@@ -1,9 +1,11 @@
+import { BlurView } from 'expo-blur';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
     Platform,
+    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,10 +13,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
+import PasswordGateControls from '../components/PasswordGateControls';
 import { setStoredSignupId } from '../lib/accessSession';
 import { classifyContact } from '../lib/classifyContact';
 import { db } from '../lib/firebase';
+
+const HEADER_HEIGHT = 110;
 const ERROR_RESET_DELAY_MS = 2000;
 const SUCCESS_RESET_DELAY_MS = 3000;
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -119,7 +123,7 @@ export default function Index() {
             {/* --- LAYER 1: Scrollable Content --- */}
             <ScrollView
                 contentContainerStyle={{
-                    paddingTop: SITE_HEADER_HEIGHT + 20,
+                    paddingTop: HEADER_HEIGHT + 20,
                     paddingBottom: 40,
                     paddingHorizontal: 20,
                     flexGrow: 1, // Use flexGrow instead of flex: 1 for ScrollViews
@@ -189,6 +193,21 @@ export default function Index() {
                     </Text>
                 </View>
             </ScrollView>
+
+            <BlurView intensity={30} tint="dark" style={styles.header}>
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.passwordTopRight}>
+                        <PasswordGateControls navigateOnUnlock={false} />
+                    </View>
+                    <View style={styles.headerContent}>
+                        <Image
+                            source={require('../assets/images/base_opt_white.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                    </View>
+                </SafeAreaView>
+            </BlurView>
         </View>
     );
 }
@@ -222,6 +241,36 @@ const styles = StyleSheet.create({
         // Visuals
         opacity: 0.12,
         pointerEvents: 'none',
+    },
+    header: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: HEADER_HEIGHT,
+        zIndex: 100,
+        overflow: 'hidden',
+    },
+    safeArea: {
+        flex: 1,
+    },
+    passwordTopRight: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        zIndex: 2,
+        paddingTop: 4,
+        paddingRight: 12,
+        alignItems: 'flex-end',
+    },
+    headerContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    logo: {
+        width: 100,
+        height: 100,
     },
     heading: {
         fontSize: 32,
