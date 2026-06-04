@@ -79,27 +79,49 @@ be overridden with environment variables at deploy time if needed:
 | `SMS_SENDER`   | `OSSAI`                   | Alphanumeric sender ID, a purchased number, or a Messaging Service SID (`MG…`). |
 | `EMAIL_FROM`   | `ossai@ossai.co.uk`       | Must match the Trigger Email extension's authenticated sender. |
 | `SITE_URL`     | `https://ossai.co.uk`     | Linked in the email button and SMS body. |
-| `EMAIL_SUBJECT`| `Ossai — Private Access`  | Welcome email subject. |
+| `EMAIL_SUBJECT`| `Ossai — Your private discount` | Welcome email subject. |
 
 ### Twilio sender
 
 Create an **Alphanumeric Sender ID** `OSSAI` (recommended for UK; one-way) or a
 purchased UK number in the Twilio console, then make sure `SMS_SENDER` matches.
 
-## 4. Deploy the Cloud Function
+## 4. Deploy Cloud Functions, rules, and indexes
 
 ```bash
 cd functions
 npm install
+npm run build
 cd ..
-firebase deploy --only functions
+firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
+
+New callables: `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
+
+Set the **admin secret** (for `/admin` on the site):
+
+```bash
+firebase functions:secrets:set ADMIN_SECRET
+# choose a long random string; enter it on https://ossai.co.uk/admin
+```
+
+`sendWelcome` now assigns a **unique discount code** (default **10% off**) per signup and includes it in the welcome email.
 
 ## 5. (Optional) Automate function/rules deploy in CI
 
 Add a `FIREBASE_SERVICE_ACCOUNT` secret and a workflow step using
 `w9jds/firebase-action` or `google-github-actions/auth` + `firebase deploy`.
 Not set up yet — functions/rules are deployed manually for now.
+
+## Phase 1 site features
+
+| URL | Purpose |
+|-----|---------|
+| `/` | Newsletter signup |
+| `/shop` | Gated shop (site password required; respects Go live / offline) |
+| `/admin` | Admin panel (`ADMIN_SECRET`) — site password, go live/offline, products, view signups |
+
+Default site password until you change it in admin: **`OSSAI10`**.
 
 ## Notes
 

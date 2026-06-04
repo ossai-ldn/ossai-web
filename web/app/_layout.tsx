@@ -2,6 +2,7 @@ import { BlurView } from 'expo-blur';
 import { Slot } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, View } from 'react-native';
+import SiteHeader from '../components/SiteHeader';
 
 export default function RootLayout() {
     const [isOverlayVisible, setIsOverlayVisible] = useState(true);
@@ -30,6 +31,7 @@ export default function RootLayout() {
 
     return (
         <View style={{ flex: 1 }}>
+            <SiteHeader />
             <Slot />
 
             {isOverlayVisible && (

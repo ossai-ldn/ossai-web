@@ -1,6 +1,7 @@
 export interface WelcomeEmailOptions {
   siteUrl: string;
-  allocationCode?: string;
+  discountCode: string;
+  discountPercent: number;
   instagramUrl?: string;
 }
 
@@ -14,11 +15,8 @@ export interface WelcomeEmailOptions {
  * code is shown as static text rather than a tap-to-copy control.
  */
 export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
-  const {
-    siteUrl,
-    allocationCode = 'OSSAI10',
-    instagramUrl = 'https://instagram.com',
-  } = options;
+  const { siteUrl, discountCode, discountPercent, instagramUrl = 'https://instagram.com' } =
+    options;
 
   const bg = '#111112';
   const card = '#1c1c1e';
@@ -62,9 +60,12 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${border};background-color:${card};">
                 <tr>
                   <td align="center" style="padding:40px 24px;font-family:Arial,Helvetica,sans-serif;">
-                    <div style="font-size:13px;letter-spacing:5px;text-transform:uppercase;color:${text};font-weight:600;margin-bottom:16px;">Private Access</div>
-                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 24px 0;">Your signature identifier has been authenticated. As a preliminary welcome to our collective, use allocation code <strong style="color:${text};letter-spacing:2px;">${allocationCode}</strong> during your digital session.</p>
-                    <a href="${siteUrl}" target="_blank" style="display:inline-block;border:1px solid ${text};color:${text};text-decoration:none;padding:15px 40px;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Enter Exhibition</a>
+                    <div style="font-size:13px;letter-spacing:5px;text-transform:uppercase;color:${text};font-weight:600;margin-bottom:16px;">Welcome to the Collective</div>
+                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 16px 0;">Your private discount has been reserved for our next exhibition.</p>
+                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 8px 0;">Code: <strong style="color:${text};letter-spacing:2px;">${discountCode}</strong></p>
+                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 24px 0;"><strong style="color:${text};">${discountPercent}% off</strong> at checkout on Shopify.</p>
+                    <p style="font-size:12px;line-height:1.6;color:${muted};margin:0 0 24px 0;">When the exhibition opens, enter the drop password on ${siteUrl} to view the collection.</p>
+                    <a href="${siteUrl}" target="_blank" style="display:inline-block;border:1px solid ${text};color:${text};text-decoration:none;padding:15px 40px;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Visit Ossai</a>
                   </td>
                 </tr>
               </table>

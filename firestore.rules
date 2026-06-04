@@ -3,22 +3,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Public newsletter/signup capture from the landing page.
-    // Clients may only CREATE well-formed documents; they can never read,
-    // update, delete, or enumerate signups.
     match /signups/{id} {
       allow create: if isValidSignup(request.resource.data);
       allow read, update, delete: if false;
     }
 
-    // Outbound mail queue consumed by the "Trigger Email from Firestore"
-    // extension. Written only by the Cloud Function (Admin SDK bypasses rules);
-    // never accessible to clients.
     match /mail/{id} {
       allow read, write: if false;
     }
 
-    // Deny everything else by default.
+    match /siteConfig/{doc} {
+      allow read, write: if false;
+    }
+
+    // Public catalog for the shop grid (gated in the app by site password session).
+    match /products/{id} {
+      allow read: if resource.data.active == true;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

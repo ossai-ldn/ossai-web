@@ -1,11 +1,9 @@
-import { BlurView } from 'expo-blur';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -13,34 +11,10 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
+import { setStoredSignupId } from '../lib/accessSession';
+import { classifyContact } from '../lib/classifyContact';
 import { db } from '../lib/firebase';
-
-const HEADER_HEIGHT = 110;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// Accepts an optional leading + followed by digits/spaces/dashes/parens; we additionally
-// require at least 7 actual digits below so short strings aren't treated as phone numbers.
-const PHONE_PATTERN = /^\+?[0-9\s().-]{7,}$/;
-
-type ContactType = 'email' | 'phone';
-
-/**
- * Classifies the single input as an email or a phone number and returns a
- * normalized value, or null if it is neither.
- */
-function classifyContact(raw: string): { type: ContactType; value: string } | null {
-    const trimmed = raw.trim();
-    if (trimmed.includes('@')) {
-        return EMAIL_PATTERN.test(trimmed) ? { type: 'email', value: trimmed.toLowerCase() } : null;
-    }
-    const digitCount = (trimmed.match(/\d/g) ?? []).length;
-    if (PHONE_PATTERN.test(trimmed) && digitCount >= 7) {
-        const normalized = trimmed.startsWith('+')
-            ? '+' + trimmed.slice(1).replace(/\D/g, '')
-            : trimmed.replace(/\D/g, '');
-        return { type: 'phone', value: normalized };
-    }
-    return null;
-}
 const ERROR_RESET_DELAY_MS = 2000;
 const SUCCESS_RESET_DELAY_MS = 3000;
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -88,13 +62,14 @@ export default function Index() {
         setStatus('loading');
 
         try {
-            await addDoc(collection(db, 'signups'), {
+            const ref = await addDoc(collection(db, 'signups'), {
                 contact: contact.value,
                 type: contact.type,
                 source: 'web-landing',
                 userAgent: Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent : Platform.OS,
                 createdAt: serverTimestamp(),
             });
+            setStoredSignupId(ref.id);
 
             setStatus('success');
             setEmail(''); // Clear input
@@ -144,7 +119,7 @@ export default function Index() {
             {/* --- LAYER 1: Scrollable Content --- */}
             <ScrollView
                 contentContainerStyle={{
-                    paddingTop: HEADER_HEIGHT + 20,
+                    paddingTop: SITE_HEADER_HEIGHT + 20,
                     paddingBottom: 40,
                     paddingHorizontal: 20,
                     flexGrow: 1, // Use flexGrow instead of flex: 1 for ScrollViews
@@ -214,20 +189,6 @@ export default function Index() {
                     </Text>
                 </View>
             </ScrollView>
-
-            {/* --- LAYER 2: Header --- */}
-            <BlurView intensity={30} tint="dark" style={styles.header}>
-                <SafeAreaView style={styles.safeArea}>
-                    <View style={styles.headerContent}>
-                        <Image
-                            source={require('../assets/images/base_opt_white.png')}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
-                    </View>
-                </SafeAreaView>
-            </BlurView>
-
         </View>
     );
 }
@@ -261,27 +222,6 @@ const styles = StyleSheet.create({
         // Visuals
         opacity: 0.12,
         pointerEvents: 'none',
-    },
-    logo: {
-        width: 100,  // Reduced size since it's in the header
-        height: 100, // Added height
-    },
-    header: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: HEADER_HEIGHT,
-        zIndex: 100,
-        overflow: 'hidden',
-    },
-    safeArea: {
-        flex: 1,
-    },
-    headerContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     heading: {
         fontSize: 32,

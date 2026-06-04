@@ -4,45 +4,72 @@ import { logger } from 'firebase-functions/v2';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import twilio from 'twilio';
+import { adminApi, getMyDiscount, getSiteStatus, verifySitePassword } from './callables';
+import { DEFAULT_DISCOUNT_PERCENT, generateDiscountCode } from './discount';
+import { getAccessConfig } from './siteConfig';
 import { renderWelcomeEmail } from './welcomeEmail';
 
 initializeApp();
 
-// Secrets (set with `firebase functions:secrets:set TWILIO_ACCOUNT_SID` etc.).
+export { verifySitePassword, getSiteStatus, getMyDiscount, adminApi };
+
 const TWILIO_ACCOUNT_SID = defineSecret('TWILIO_ACCOUNT_SID');
 const TWILIO_AUTH_TOKEN = defineSecret('TWILIO_AUTH_TOKEN');
 
-// Non-secret config (override per-environment if needed).
 const SMS_SENDER = defineString('SMS_SENDER', { default: 'OSSAI' });
 const EMAIL_FROM = defineString('EMAIL_FROM', { default: 'ossai@ossai.co.uk' });
 const SITE_URL = defineString('SITE_URL', { default: 'https://ossai.co.uk' });
-const EMAIL_SUBJECT = defineString('EMAIL_SUBJECT', { default: 'Ossai — Private Access' });
+const EMAIL_SUBJECT = defineString('EMAIL_SUBJECT', {
+  default: 'Ossai — Your private discount',
+});
 
 interface SignupDoc {
   contact: string;
   type: 'email' | 'phone';
 }
 
-/**
- * On every new `signups` document:
- *  - email  -> queue the branded HTML welcome email (consumed by the
- *              "Trigger Email from Firestore" extension via the `mail` collection)
- *  - phone  -> send an SMS with a link to the site via Twilio
- */
+async function assignUniqueDiscount(signupId: string): Promise<{
+  discountCode: string;
+  discountPercent: number;
+}> {
+  const db = getFirestore();
+  const config = await getAccessConfig();
+  const discountPercent = config.defaultDiscountPercent ?? DEFAULT_DISCOUNT_PERCENT;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const discountCode = generateDiscountCode();
+    const existing = await db
+      .collection('signups')
+      .where('discountCode', '==', discountCode)
+      .limit(1)
+      .get();
+    if (!existing.empty) continue;
+
+    await db.collection('signups').doc(signupId).update({
+      discountCode,
+      discountPercent,
+    });
+    return { discountCode, discountPercent };
+  }
+  throw new Error('Failed to generate unique discount code');
+}
+
 export const sendWelcome = onDocumentCreated(
   {
     document: 'signups/{id}',
-    // Must match the Firestore database location (London / europe-west2) — a
-    // Firestore trigger has to live in the same region as the database.
     region: 'europe-west2',
     secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN],
   },
   async (event) => {
+    const signupId = event.params.id;
     const data = event.data?.data() as SignupDoc | undefined;
     if (!data || !data.contact || !data.type) {
-      logger.warn('Skipping signup with missing data', { id: event.params.id });
+      logger.warn('Skipping signup with missing data', { id: signupId });
       return;
     }
+
+    const { discountCode, discountPercent } = await assignUniqueDiscount(signupId);
+    const siteUrl = SITE_URL.value();
 
     if (data.type === 'email') {
       await getFirestore()
@@ -52,31 +79,33 @@ export const sendWelcome = onDocumentCreated(
           from: EMAIL_FROM.value(),
           message: {
             subject: EMAIL_SUBJECT.value(),
-            html: renderWelcomeEmail({ siteUrl: SITE_URL.value() }),
+            html: renderWelcomeEmail({ siteUrl, discountCode, discountPercent }),
           },
         });
-      logger.info('Queued welcome email', { id: event.params.id });
+      logger.info('Queued welcome email', { id: signupId, discountCode });
       return;
     }
 
     if (data.type === 'phone') {
-      const client = twilio(TWILIO_ACCOUNT_SID.value(), TWILIO_AUTH_TOKEN.value());
-      const sender = SMS_SENDER.value();
-      // A Messaging Service SID starts with "MG"; anything else is treated as a
-      // sender (alphanumeric sender ID like "OSSAI", or a purchased number).
-      const senderOpts = sender.startsWith('MG')
-        ? { messagingServiceSid: sender }
-        : { from: sender };
+      try {
+        const client = twilio(TWILIO_ACCOUNT_SID.value(), TWILIO_AUTH_TOKEN.value());
+        const sender = SMS_SENDER.value();
+        const senderOpts = sender.startsWith('MG')
+          ? { messagingServiceSid: sender }
+          : { from: sender };
 
-      await client.messages.create({
-        to: data.contact,
-        body: `Welcome to Ossai. Use allocation code OSSAI10. Enter the exhibition: ${SITE_URL.value()}`,
-        ...senderOpts,
-      });
-      logger.info('Sent welcome SMS', { id: event.params.id });
+        await client.messages.create({
+          to: data.contact,
+          body: `Welcome to Ossai. Your code: ${discountCode} (${discountPercent}% off). Visit ${siteUrl}`,
+          ...senderOpts,
+        });
+        logger.info('Sent welcome SMS', { id: signupId });
+      } catch (err) {
+        logger.error('SMS failed (discount still saved)', { id: signupId, err });
+      }
       return;
     }
 
-    logger.warn('Unknown signup type', { id: event.params.id, type: data.type });
+    logger.warn('Unknown signup type', { id: signupId, type: data.type });
   },
 );
