@@ -1,4 +1,5 @@
 import { BlurView } from 'expo-blur';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -12,11 +13,35 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { db } from '../lib/firebase';
 
 const HEADER_HEIGHT = 110;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Accepts an optional leading + followed by digits/spaces/dashes/parens; we additionally
+// require at least 7 actual digits below so short strings aren't treated as phone numbers.
+const PHONE_PATTERN = /^\+?[0-9\s().-]{7,}$/;
+
+type ContactType = 'email' | 'phone';
+
+/**
+ * Classifies the single input as an email or a phone number and returns a
+ * normalized value, or null if it is neither.
+ */
+function classifyContact(raw: string): { type: ContactType; value: string } | null {
+    const trimmed = raw.trim();
+    if (trimmed.includes('@')) {
+        return EMAIL_PATTERN.test(trimmed) ? { type: 'email', value: trimmed.toLowerCase() } : null;
+    }
+    const digitCount = (trimmed.match(/\d/g) ?? []).length;
+    if (PHONE_PATTERN.test(trimmed) && digitCount >= 7) {
+        const normalized = trimmed.startsWith('+')
+            ? '+' + trimmed.slice(1).replace(/\D/g, '')
+            : trimmed.replace(/\D/g, '');
+        return { type: 'phone', value: normalized };
+    }
+    return null;
+}
 const ERROR_RESET_DELAY_MS = 2000;
-const SIGNUP_DELAY_MS = 1500;
 const SUCCESS_RESET_DELAY_MS = 3000;
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -47,28 +72,38 @@ export default function Index() {
     }, []);
 
     // 2. LOGIC HANDLERS
-    const handleJoin = () => {
+    const handleJoin = async () => {
         if (status === 'loading') return;
 
         clearTimers();
-        const normalizedEmail = email.trim();
 
-        // Basic Validation
-        if (!EMAIL_PATTERN.test(normalizedEmail)) {
+        // Accept either an email address or a phone number in the single field.
+        const contact = classifyContact(email);
+        if (!contact) {
             setStatus('error');
             scheduleTimer(() => setStatus('idle'), ERROR_RESET_DELAY_MS);
             return;
         }
 
-        // Simulate API Call
-        setEmail(normalizedEmail);
         setStatus('loading');
 
-        scheduleTimer(() => {
+        try {
+            await addDoc(collection(db, 'signups'), {
+                contact: contact.value,
+                type: contact.type,
+                source: 'web-landing',
+                userAgent: Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent : Platform.OS,
+                createdAt: serverTimestamp(),
+            });
+
             setStatus('success');
             setEmail(''); // Clear input
             scheduleTimer(() => setStatus('idle'), SUCCESS_RESET_DELAY_MS);
-        }, SIGNUP_DELAY_MS);
+        } catch (err) {
+            console.error('Signup failed', err);
+            setStatus('error');
+            scheduleTimer(() => setStatus('idle'), ERROR_RESET_DELAY_MS);
+        }
     };
 
     const getStatusColor = () => {
@@ -132,7 +167,7 @@ export default function Index() {
                                 status === 'error' && { borderWidth: 1, borderColor: '#FF3B30' }
                             ]}
                             // 2. Logic to hide placeholder on focus
-                            placeholder={isFocused ? '' : "Enter your email"}
+                            placeholder={isFocused ? '' : "Enter your email or number"}
                             placeholderTextColor="#666"
 
                             // 3. Add these two handlers
@@ -140,7 +175,7 @@ export default function Index() {
                             onBlur={() => setIsFocused(false)}
 
                             // ... keep existing props
-                            keyboardType="email-address"
+                            keyboardType="default"
                             autoCapitalize="none"
                             value={email}
                             onChangeText={(text) => {
