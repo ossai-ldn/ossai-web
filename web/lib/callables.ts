@@ -18,6 +18,25 @@ export async function fetchSiteStatus() {
   return result.data;
 }
 
+export async function registerSignup(params: {
+  contact: string;
+  source?: string;
+  userAgent?: string;
+}) {
+  const fn = httpsCallable<
+    { contact: string; source?: string; userAgent?: string },
+    {
+      signupId: string;
+      existing: boolean;
+      discountCode: string;
+      discountPercent: number;
+      contact: string;
+    }
+  >(functions, 'registerSignup');
+  const result = await fn(params);
+  return result.data;
+}
+
 export async function fetchMyDiscount(params: { signupId?: string; contact?: string }) {
   const fn = httpsCallable<
     { signupId?: string; contact?: string },

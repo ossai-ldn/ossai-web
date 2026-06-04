@@ -1,5 +1,4 @@
 import { BlurView } from 'expo-blur';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -16,7 +15,7 @@ import {
 import PasswordGateControls from '../components/PasswordGateControls';
 import { setStoredSignupId } from '../lib/accessSession';
 import { classifyContact } from '../lib/classifyContact';
-import { db } from '../lib/firebase';
+import { registerSignup } from '../lib/callables';
 
 const HEADER_HEIGHT = 110;
 const ERROR_RESET_DELAY_MS = 2000;
@@ -26,8 +25,8 @@ type Status = 'idle' | 'loading' | 'success' | 'error';
 export default function Index() {
     // 1. STATE DEFINITIONS
     const [email, setEmail] = useState('');
-    // Status: 'idle' | 'loading' | 'success' | 'error'
     const [status, setStatus] = useState<Status>('idle');
+    const [discountPreview, setDiscountPreview] = useState('');
     const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
     const clearTimers = () => {
         timersRef.current.forEach(clearTimeout);
@@ -66,18 +65,27 @@ export default function Index() {
         setStatus('loading');
 
         try {
-            const ref = await addDoc(collection(db, 'signups'), {
+            const result = await registerSignup({
                 contact: contact.value,
-                type: contact.type,
                 source: 'web-landing',
-                userAgent: Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent : Platform.OS,
-                createdAt: serverTimestamp(),
+                userAgent:
+                    Platform.OS === 'web' && typeof navigator !== 'undefined'
+                        ? navigator.userAgent
+                        : Platform.OS,
             });
-            setStoredSignupId(ref.id);
+            setStoredSignupId(result.signupId);
+            setDiscountPreview(
+                result.discountCode
+                    ? `${result.discountCode} · ${result.discountPercent}% off`
+                    : '',
+            );
 
             setStatus('success');
-            setEmail(''); // Clear input
-            scheduleTimer(() => setStatus('idle'), SUCCESS_RESET_DELAY_MS);
+            setEmail('');
+            scheduleTimer(() => {
+                setStatus('idle');
+                setDiscountPreview('');
+            }, SUCCESS_RESET_DELAY_MS);
         } catch (err) {
             console.error('Signup failed', err);
             setStatus('error');
@@ -182,6 +190,9 @@ export default function Index() {
                                 </Text>
                             )}
                         </TouchableOpacity>
+                        {status === 'success' && discountPreview ? (
+                            <Text style={styles.discountHint}>{discountPreview}</Text>
+                        ) : null}
                     </View>
                 </View>
 
@@ -301,6 +312,13 @@ const styles = StyleSheet.create({
         color: '#888',
         marginBottom: 20,
         textAlign: 'center',
+    },
+    discountHint: {
+        color: '#aaffbf',
+        fontSize: 12,
+        letterSpacing: 1,
+        textAlign: 'center',
+        marginTop: 8,
     },
 
     formContainer: {

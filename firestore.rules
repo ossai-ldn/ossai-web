@@ -4,7 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /signups/{id} {
-      allow create: if isValidSignup(request.resource.data);
+      // Created via registerSignup callable only (deduped server-side).
+      allow create: if false;
       allow read, update, delete: if false;
     }
 
@@ -28,15 +29,3 @@ service cloud.firestore {
   }
 }
 
-function isValidSignup(data) {
-  return data.keys().hasOnly(['contact', 'type', 'source', 'userAgent', 'createdAt'])
-    && data.contact is string
-    && data.contact.size() > 3
-    && data.contact.size() < 200
-    && data.type in ['email', 'phone']
-    && data.source is string
-    && data.source.size() < 100
-    && data.userAgent is string
-    && data.userAgent.size() < 1000
-    && data.createdAt == request.time;
-}

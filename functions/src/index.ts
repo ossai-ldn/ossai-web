@@ -4,14 +4,19 @@ import { logger } from 'firebase-functions/v2';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import twilio from 'twilio';
-import { adminApi, getMyDiscount, getSiteStatus, verifySitePassword } from './callables';
-import { DEFAULT_DISCOUNT_PERCENT, generateDiscountCode } from './discount';
-import { getAccessConfig } from './siteConfig';
+import {
+  adminApi,
+  getMyDiscount,
+  getSiteStatus,
+  registerSignup,
+  verifySitePassword,
+} from './callables';
+import { ensureSignupDiscount } from './signupDiscount';
 import { renderWelcomeEmail } from './welcomeEmail';
 
 initializeApp();
 
-export { verifySitePassword, getSiteStatus, getMyDiscount, adminApi };
+export { verifySitePassword, getSiteStatus, getMyDiscount, registerSignup, adminApi };
 
 const TWILIO_ACCOUNT_SID = defineSecret('TWILIO_ACCOUNT_SID');
 const TWILIO_AUTH_TOKEN = defineSecret('TWILIO_AUTH_TOKEN');
@@ -28,32 +33,6 @@ interface SignupDoc {
   type: 'email' | 'phone';
 }
 
-async function assignUniqueDiscount(signupId: string): Promise<{
-  discountCode: string;
-  discountPercent: number;
-}> {
-  const db = getFirestore();
-  const config = await getAccessConfig();
-  const discountPercent = config.defaultDiscountPercent ?? DEFAULT_DISCOUNT_PERCENT;
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const discountCode = generateDiscountCode();
-    const existing = await db
-      .collection('signups')
-      .where('discountCode', '==', discountCode)
-      .limit(1)
-      .get();
-    if (!existing.empty) continue;
-
-    await db.collection('signups').doc(signupId).update({
-      discountCode,
-      discountPercent,
-    });
-    return { discountCode, discountPercent };
-  }
-  throw new Error('Failed to generate unique discount code');
-}
-
 export const sendWelcome = onDocumentCreated(
   {
     document: 'signups/{id}',
@@ -68,7 +47,15 @@ export const sendWelcome = onDocumentCreated(
       return;
     }
 
-    const { discountCode, discountPercent } = await assignUniqueDiscount(signupId);
+    const db = getFirestore();
+    const snap = await db.collection('signups').doc(signupId).get();
+    const existing = snap.data();
+    if (existing?.welcomeSent === true) {
+      logger.info('Welcome already sent', { id: signupId });
+      return;
+    }
+
+    const { discountCode, discountPercent } = await ensureSignupDiscount(signupId);
     const siteUrl = SITE_URL.value();
 
     if (data.type === 'email') {
@@ -82,6 +69,7 @@ export const sendWelcome = onDocumentCreated(
             html: renderWelcomeEmail({ siteUrl, discountCode, discountPercent }),
           },
         });
+      await db.collection('signups').doc(signupId).update({ welcomeSent: true });
       logger.info('Queued welcome email', { id: signupId, discountCode });
       return;
     }
@@ -99,6 +87,7 @@ export const sendWelcome = onDocumentCreated(
           body: `Welcome to Ossai. Your code: ${discountCode} (${discountPercent}% off). Visit ${siteUrl}`,
           ...senderOpts,
         });
+        await db.collection('signups').doc(signupId).update({ welcomeSent: true });
         logger.info('Sent welcome SMS', { id: signupId });
       } catch (err) {
         logger.error('SMS failed (discount still saved)', { id: signupId, err });

@@ -3,8 +3,6 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import ProductCard from '../components/ProductCard';
 import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
 import {
   copyToClipboard,
@@ -25,15 +24,7 @@ import {
 import { classifyContact } from '../lib/classifyContact';
 import { fetchMyDiscount, fetchSiteStatus } from '../lib/callables';
 import { db } from '../lib/firebase';
-
-type Product = {
-  id: string;
-  title: string;
-  priceDisplay: string;
-  imageUrl: string;
-  shopifyUrl: string;
-  soldOut: boolean;
-};
+import { mapProductDoc, type Product } from '../lib/productTypes';
 
 export default function ShopScreen() {
   const router = useRouter();
@@ -46,6 +37,7 @@ export default function ShopScreen() {
   const [lookupContact, setLookupContact] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lookupError, setLookupError] = useState('');
 
   const loadDiscount = useCallback(async () => {
     const signupId = getStoredSignupId();
@@ -77,7 +69,7 @@ export default function ShopScreen() {
       })
       .catch(() => undefined);
 
-    loadDiscount();
+    loadDiscount().catch(() => undefined);
 
     const loadProducts = async () => {
       const q = query(
@@ -86,19 +78,7 @@ export default function ShopScreen() {
         orderBy('sortOrder', 'asc'),
       );
       const snap = await getDocs(q);
-      setProducts(
-        snap.docs.map((doc) => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            title: String(d.title ?? ''),
-            priceDisplay: String(d.priceDisplay ?? ''),
-            imageUrl: String(d.imageUrl ?? ''),
-            shopifyUrl: String(d.shopifyUrl ?? ''),
-            soldOut: d.soldOut === true,
-          };
-        }),
-      );
+      setProducts(snap.docs.map((doc) => mapProductDoc(doc.id, doc.data() as Record<string, unknown>)));
       setLoading(false);
     };
 
@@ -107,15 +87,29 @@ export default function ShopScreen() {
 
   const handleLookup = async () => {
     const contact = classifyContact(lookupContact);
-    if (!contact) return;
+    if (!contact) {
+      setLookupError('Enter a valid email or phone number.');
+      return;
+    }
     setLookupLoading(true);
+    setLookupError('');
     try {
       const d = await fetchMyDiscount({ contact: contact.value });
+      if (!d.discountCode) {
+        setLookupError('No discount code on file yet. Try again in a moment.');
+        return;
+      }
       setDiscountCode(d.discountCode);
       setDiscountPercent(d.discountPercent);
       if (d.signupId) setStoredSignupId(d.signupId);
-    } catch {
-      /* ignore */
+    } catch (e: unknown) {
+      const code =
+        e && typeof e === 'object' && 'code' in e ? String((e as { code: string }).code) : '';
+      if (code === 'functions/not-found') {
+        setLookupError('No signup found for that email or number.');
+      } else {
+        setLookupError('Could not load your code. Check your connection and try again.');
+      }
     } finally {
       setLookupLoading(false);
     }
@@ -185,6 +179,7 @@ export default function ShopScreen() {
               </TouchableOpacity>
             </View>
           )}
+          {lookupError ? <Text style={styles.lookupError}>{lookupError}</Text> : null}
         </View>
 
         {!shopLive ? (
@@ -202,30 +197,7 @@ export default function ShopScreen() {
         ) : (
           <View style={styles.grid}>
             {products.map((p) => (
-              <TouchableOpacity
-                key={p.id}
-                style={styles.card}
-                activeOpacity={p.soldOut ? 1 : 0.85}
-                disabled={p.soldOut}
-                onPress={() => p.shopifyUrl && Linking.openURL(p.shopifyUrl)}
-              >
-                {p.imageUrl ? (
-                  <Image source={{ uri: p.imageUrl }} style={styles.cardImage} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.cardImage, styles.cardImagePlaceholder]} />
-                )}
-                {p.soldOut && (
-                  <View style={styles.soldOutBadge}>
-                    <Text style={styles.soldOutText}>SOLD OUT</Text>
-                  </View>
-                )}
-                <Text style={styles.cardTitle} numberOfLines={2}>
-                  {p.title.toUpperCase()}
-                </Text>
-                {p.priceDisplay ? (
-                  <Text style={styles.cardPrice}>{p.priceDisplay}</Text>
-                ) : null}
-              </TouchableOpacity>
+              <ProductCard key={p.id} product={p} />
             ))}
           </View>
         )}
@@ -306,6 +278,12 @@ const styles = StyleSheet.create({
   },
   lookupBtn: { paddingHorizontal: 12, paddingVertical: 10 },
   lookupBtnText: { color: '#fff', fontSize: 11, letterSpacing: 2 },
+  lookupError: {
+    color: '#ff918b',
+    fontSize: 12,
+    marginTop: 12,
+    textAlign: 'center',
+  },
   closedBox: {
     borderWidth: 1,
     borderColor: '#2c2c2e',
@@ -321,26 +299,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
   },
-  card: {
-    width: Platform.OS === 'web' ? '48%' : '47%',
-    marginBottom: 8,
-  },
-  cardImage: {
-    width: '100%',
-    aspectRatio: 0.85,
-    backgroundColor: '#1c1c1e',
-    marginBottom: 10,
-  },
-  cardImagePlaceholder: { backgroundColor: '#2c2c2e' },
-  soldOutBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  soldOutText: { color: '#fff', fontSize: 9, letterSpacing: 2 },
-  cardTitle: { color: '#fff', fontSize: 11, letterSpacing: 1, marginBottom: 4 },
-  cardPrice: { color: '#8e8e93', fontSize: 12 },
 });

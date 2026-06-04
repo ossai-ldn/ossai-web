@@ -28,12 +28,30 @@ type SignupRow = {
 type ProductRow = {
   id: string;
   title?: string;
+  slug?: string;
   priceDisplay?: string;
+  imageFront?: string;
+  imageBack?: string;
   imageUrl?: string;
   shopifyUrl?: string;
+  description?: string;
+  details?: string;
   sortOrder?: number;
+  stockQty?: number;
   active?: boolean;
   soldOut?: boolean;
+};
+
+const emptyDraft = {
+  title: '',
+  slug: '',
+  priceDisplay: '',
+  imageFront: '',
+  imageBack: '',
+  shopifyUrl: '',
+  description: '',
+  details: '',
+  stockQty: '0',
 };
 
 export default function AdminScreen() {
@@ -46,11 +64,8 @@ export default function AdminScreen() {
   const [shopLive, setShopLive] = useState(false);
   const [signups, setSignups] = useState<SignupRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
-
-  const [newTitle, setNewTitle] = useState('');
-  const [newPrice, setNewPrice] = useState('');
-  const [newImage, setNewImage] = useState('');
-  const [newShopify, setNewShopify] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState(emptyDraft);
 
   useEffect(() => {
     const stored = getAdminSecret();
@@ -72,16 +87,10 @@ export default function AdminScreen() {
       setSitePassword(config.sitePassword);
       setShopLive(config.shopLive);
 
-      const signupRes = await adminRequest<{ signups: SignupRow[] }>(
-        adminSecret,
-        'listSignups',
-      );
+      const signupRes = await adminRequest<{ signups: SignupRow[] }>(adminSecret, 'listSignups');
       setSignups(signupRes.signups);
 
-      const productRes = await adminRequest<{ products: ProductRow[] }>(
-        adminSecret,
-        'listProducts',
-      );
+      const productRes = await adminRequest<{ products: ProductRow[] }>(adminSecret, 'listProducts');
       setProducts(productRes.products);
     } catch {
       setMessage('Session expired or invalid secret.');
@@ -113,14 +122,60 @@ export default function AdminScreen() {
     setLoading(true);
     setMessage('');
     try {
-      await adminRequest(s, action, payload);
-      setMessage(`Done: ${action}`);
+      const result = await adminRequest<Record<string, unknown>>(s, action, payload);
+      if (action === 'backfillSignups' && result) {
+        setMessage(
+          `Backfill: ${result.merged ?? 0} duplicates removed, ${result.codesAssigned ?? 0} codes assigned.`,
+        );
+      } else {
+        setMessage(`Done: ${action}`);
+      }
       await refreshAll(s);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Action failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  const startEdit = (p: ProductRow) => {
+    setEditingId(p.id);
+    setDraft({
+      title: p.title ?? '',
+      slug: p.slug ?? '',
+      priceDisplay: p.priceDisplay ?? '',
+      imageFront: String(p.imageFront ?? p.imageUrl ?? ''),
+      imageBack: p.imageBack ?? '',
+      shopifyUrl: p.shopifyUrl ?? '',
+      description: p.description ?? '',
+      details: p.details ?? '',
+      stockQty: String(p.stockQty ?? 0),
+    });
+  };
+
+  const startNew = () => {
+    setEditingId('new');
+    setDraft(emptyDraft);
+  };
+
+  const saveProduct = () => {
+    const payload = {
+      productId: editingId === 'new' ? undefined : editingId,
+      title: draft.title,
+      slug: draft.slug || undefined,
+      priceDisplay: draft.priceDisplay,
+      imageFront: draft.imageFront,
+      imageBack: draft.imageBack,
+      shopifyUrl: draft.shopifyUrl,
+      description: draft.description,
+      details: draft.details,
+      stockQty: Number(draft.stockQty) || 0,
+      sortOrder: editingId === 'new' ? products.length : undefined,
+    };
+    runAction('upsertProduct', payload).then(() => {
+      setEditingId(null);
+      setDraft(emptyDraft);
+    });
   };
 
   if (!authed) {
@@ -192,36 +247,77 @@ export default function AdminScreen() {
         </View>
         <Text style={styles.hint}>Shop is {shopLive ? 'LIVE' : 'OFFLINE'}</Text>
 
-        <Text style={styles.section}>ADD PRODUCT</Text>
-        <TextInput style={styles.input} placeholder="Title" placeholderTextColor="#666" value={newTitle} onChangeText={setNewTitle} />
-        <TextInput style={styles.input} placeholder="Price (e.g. £120)" placeholderTextColor="#666" value={newPrice} onChangeText={setNewPrice} />
-        <TextInput style={styles.input} placeholder="Image URL" placeholderTextColor="#666" value={newImage} onChangeText={setNewImage} />
-        <TextInput style={styles.input} placeholder="Shopify product URL" placeholderTextColor="#666" value={newShopify} onChangeText={setNewShopify} />
-        <TouchableOpacity
-          style={styles.btn}
-          onPress={() => {
-            runAction('upsertProduct', {
-              title: newTitle,
-              priceDisplay: newPrice,
-              imageUrl: newImage,
-              shopifyUrl: newShopify,
-              sortOrder: products.length,
-            }).then(() => {
-              setNewTitle('');
-              setNewPrice('');
-              setNewImage('');
-              setNewShopify('');
-            });
-          }}
-        >
-          <Text style={styles.btnText}>ADD PRODUCT</Text>
+        <Text style={styles.section}>SIGNUPS</Text>
+        <TouchableOpacity style={styles.btn} onPress={() => runAction('backfillSignups')}>
+          <Text style={styles.btnText}>DEDUPE & BACKFILL DISCOUNTS</Text>
         </TouchableOpacity>
 
         <Text style={styles.section}>PRODUCTS ({products.length})</Text>
+        <TouchableOpacity style={styles.btn} onPress={startNew}>
+          <Text style={styles.btnText}>+ NEW PRODUCT</Text>
+        </TouchableOpacity>
+
+        {editingId ? (
+          <View style={styles.editor}>
+            <Text style={styles.label}>{editingId === 'new' ? 'New product' : 'Edit product'}</Text>
+            <TextInput style={styles.input} placeholder="Title" placeholderTextColor="#666" value={draft.title} onChangeText={(t) => setDraft({ ...draft, title: t })} />
+            <TextInput style={styles.input} placeholder="URL slug (optional)" placeholderTextColor="#666" value={draft.slug} onChangeText={(t) => setDraft({ ...draft, slug: t })} autoCapitalize="none" />
+            <TextInput style={styles.input} placeholder="Price display" placeholderTextColor="#666" value={draft.priceDisplay} onChangeText={(t) => setDraft({ ...draft, priceDisplay: t })} />
+            <TextInput style={styles.input} placeholder="Front image URL" placeholderTextColor="#666" value={draft.imageFront} onChangeText={(t) => setDraft({ ...draft, imageFront: t })} autoCapitalize="none" />
+            <TextInput style={styles.input} placeholder="Back image URL (hover)" placeholderTextColor="#666" value={draft.imageBack} onChangeText={(t) => setDraft({ ...draft, imageBack: t })} autoCapitalize="none" />
+            <TextInput style={styles.input} placeholder="Shopify product URL" placeholderTextColor="#666" value={draft.shopifyUrl} onChangeText={(t) => setDraft({ ...draft, shopifyUrl: t })} autoCapitalize="none" />
+            <TextInput style={styles.input} placeholder="Stock quantity (admin only)" placeholderTextColor="#666" value={draft.stockQty} onChangeText={(t) => setDraft({ ...draft, stockQty: t })} keyboardType="number-pad" />
+            <TextInput style={[styles.input, styles.textArea]} placeholder="Description" placeholderTextColor="#666" value={draft.description} onChangeText={(t) => setDraft({ ...draft, description: t })} multiline />
+            <TextInput style={[styles.input, styles.textArea]} placeholder="Details (size, material…)" placeholderTextColor="#666" value={draft.details} onChangeText={(t) => setDraft({ ...draft, details: t })} multiline />
+            <TouchableOpacity style={styles.btn} onPress={saveProduct}>
+              <Text style={styles.btnText}>SAVE PRODUCT</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setEditingId(null); setDraft(emptyDraft); }}>
+              <Text style={styles.link}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {products.map((p) => (
           <View key={p.id} style={styles.card}>
             <Text style={styles.cardTitle}>{p.title}</Text>
-            <Text style={styles.cardSub}>{p.priceDisplay}</Text>
+            <Text style={styles.cardSub}>
+              /shop/{p.slug ?? p.id} · stock {p.stockQty ?? 0}
+              {p.soldOut ? ' · SOLD OUT' : ''}
+              {p.active === false ? ' · HIDDEN' : ' · ON DISPLAY'}
+            </Text>
+            <View style={styles.row}>
+              <TouchableOpacity style={styles.smallBtn} onPress={() => startEdit(p)}>
+                <Text style={styles.smallBtnText}>EDIT</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.smallBtn}
+                onPress={() =>
+                  runAction('upsertProduct', {
+                    productId: p.id,
+                    title: p.title,
+                    shopifyUrl: p.shopifyUrl,
+                    active: p.active === false,
+                  })
+                }
+              >
+                <Text style={styles.smallBtnText}>{p.active === false ? 'SHOW' : 'HIDE'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.smallBtn}
+                onPress={() =>
+                  runAction('upsertProduct', {
+                    productId: p.id,
+                    title: p.title,
+                    shopifyUrl: p.shopifyUrl,
+                    soldOut: !p.soldOut,
+                    stockQty: p.stockQty,
+                  })
+                }
+              >
+                <Text style={styles.smallBtnText}>{p.soldOut ? 'MARK IN STOCK' : 'MARK SOLD OUT'}</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity onPress={() => runAction('deleteProduct', { productId: p.id })}>
               <Text style={styles.danger}>Delete</Text>
             </TouchableOpacity>
@@ -229,11 +325,11 @@ export default function AdminScreen() {
         ))}
 
         <Text style={styles.section}>SIGNUPS ({signups.length})</Text>
-        {signups.slice(0, 20).map((s) => (
+        {signups.slice(0, 30).map((s) => (
           <View key={s.id} style={styles.card}>
             <Text style={styles.cardTitle}>{s.contact}</Text>
             <Text style={styles.cardSub}>
-              {s.discountCode} · {s.discountPercent}%
+              {s.discountCode || '—'} · {s.discountPercent ?? 10}%
             </Text>
           </View>
         ))}
@@ -272,6 +368,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 14,
   },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  editor: {
+    borderWidth: 1,
+    borderColor: '#3a3a3c',
+    padding: 12,
+    marginBottom: 16,
+  },
   btn: {
     borderWidth: 1,
     borderColor: '#fff',
@@ -279,14 +382,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  smallBtn: {
+    borderWidth: 1,
+    borderColor: '#666',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginRight: 6,
+    marginTop: 8,
+  },
+  smallBtnText: { color: '#fff', fontSize: 9, letterSpacing: 1 },
   btnHalf: { flex: 1 },
   btnActive: { backgroundColor: '#2c2c2e' },
   btnText: { color: '#fff', fontSize: 11, letterSpacing: 2 },
-  row: { flexDirection: 'row', gap: 10 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   hint: { color: '#8e8e93', fontSize: 12, marginBottom: 8 },
   msg: { color: '#aaffbf', marginBottom: 12, fontSize: 13 },
   error: { color: '#ff918b', marginTop: 12 },
-  link: { color: '#8e8e93', textAlign: 'center' },
+  link: { color: '#8e8e93', textAlign: 'center', marginTop: 8 },
   card: {
     borderWidth: 1,
     borderColor: '#2c2c2e',

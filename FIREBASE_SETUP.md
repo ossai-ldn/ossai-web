@@ -96,7 +96,9 @@ cd ..
 firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
 
-New callables: `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
+New callables: `registerSignup`, `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
+
+Signups are created via **`registerSignup`** (deduped by normalized email/phone). In `/admin`, run **DEDUPE & BACKFILL DISCOUNTS** once to merge duplicate rows and assign missing codes.
 
 Set the **admin secret** (for `/admin` on the site):
 
@@ -118,8 +120,9 @@ Not set up yet — functions/rules are deployed manually for now.
 | URL | Purpose |
 |-----|---------|
 | `/` | Newsletter signup |
-| `/shop` | Gated shop (site password required; respects Go live / offline) |
-| `/admin` | Admin panel (`ADMIN_SECRET`) — site password, go live/offline, products, view signups |
+| `/shop` | Gated shop grid (hover front/back images, links to product pages) |
+| `/shop/[slug]` | Product detail page (editable in admin) |
+| `/admin` | Admin panel — products, stock, show/hide, signups backfill |
 
 Default site password until you change it in admin: **`OSSAI10`**.
 
@@ -128,6 +131,5 @@ Default site password until you change it in admin: **`OSSAI10`**.
 - The Firebase **web config** in `web/lib/firebase.ts` is public (client
   identifiers), secured by the rules above — safe to ship in the static bundle.
   Override via `EXPO_PUBLIC_FIREBASE_*` env vars if desired.
-- A captcha (e.g., Cloudflare Turnstile) is intentionally deferred; until then
-  the `signups` collection is publicly writable (create-only, shape-validated),
-  so bot spam is possible.
+- A captcha (e.g., Cloudflare Turnstile) is intentionally deferred; signups are
+  created only through the `registerSignup` callable (not direct Firestore writes).

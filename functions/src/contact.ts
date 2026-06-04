@@ -1,20 +1,19 @@
 export type ContactType = 'email' | 'phone';
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^\+?[0-9\s().-]{7,}$/;
-
-/** Client-side contact normalization (mirrors server `normalizeContact`). */
-export function classifyContact(raw: string): { type: ContactType; value: string } | null {
+/** Normalizes email/phone for storage and deduplication. */
+export function normalizeContact(raw: string): { type: ContactType; value: string } | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
   if (trimmed.includes('@')) {
     const email = trimmed.toLowerCase();
-    return EMAIL_PATTERN.test(email) ? { type: 'email', value: email } : null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+    return { type: 'email', value: email };
   }
 
   const digits = trimmed.replace(/\D/g, '');
-  if (digits.length < 7 || !PHONE_PATTERN.test(trimmed)) return null;
+  if (digits.length < 7) return null;
+  if (!/^\+?[0-9\s().-]{7,}$/.test(trimmed)) return null;
 
   let value: string;
   if (trimmed.startsWith('+')) {
