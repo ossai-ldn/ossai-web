@@ -6,7 +6,7 @@
     "scripts": {
         "predeploy": "npm run build",
         "build": "npx expo export --platform web",
-        "deploy": "gh-pages -d dist",
+        "deploy": "gh-pages -d dist --cname ossai.co.uk",
         "start": "expo start",
         "reset-project": "node ./scripts/reset-project.js",
         "android": "expo start --android",
