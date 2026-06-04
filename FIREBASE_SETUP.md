@@ -15,7 +15,7 @@ Browser (ossai.co.uk)  --addDoc("signups")-->  Firestore
 ```
 
 The web client (`web/`) is already wired up. The items below run against the
-Firebase project `ossai-9c5e2` and must be done with the Firebase CLI / console
+Firebase project `ossai-82889` and must be done with the Firebase CLI / console
 (the client cannot do them).
 
 ## 0. Prerequisites
