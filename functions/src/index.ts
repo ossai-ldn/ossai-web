@@ -14,7 +14,7 @@ const TWILIO_AUTH_TOKEN = defineSecret('TWILIO_AUTH_TOKEN');
 
 // Non-secret config (override per-environment if needed).
 const SMS_SENDER = defineString('SMS_SENDER', { default: 'OSSAI' });
-const EMAIL_FROM = defineString('EMAIL_FROM', { default: 'welcome@ossai.co.uk' });
+const EMAIL_FROM = defineString('EMAIL_FROM', { default: 'ossai@ossai.co.uk' });
 const SITE_URL = defineString('SITE_URL', { default: 'https://ossai.co.uk' });
 const EMAIL_SUBJECT = defineString('EMAIL_SUBJECT', { default: 'Ossai — Private Access' });
 

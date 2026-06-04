@@ -47,7 +47,7 @@ Firebase console → Extensions → install **Trigger Email from Firestore**:
 - **Email documents collection:** `mail`
 - **SMTP connection URI:** your SendGrid SMTP, e.g.
   `smtps://apikey:<SENDGRID_API_KEY>@smtp.sendgrid.net:465`
-- **Default FROM address:** `welcome@ossai.co.uk` (must be on the
+- **Default FROM address:** `ossai@ossai.co.uk` (must be on the
   domain you authenticated in SendGrid)
 
 The `ossai.co.uk` domain DNS (SPF/DKIM CNAMEs + DMARC) is already verified.
@@ -66,7 +66,7 @@ be overridden with environment variables at deploy time if needed:
 | Param          | Default                   | Notes |
 |----------------|---------------------------|-------|
 | `SMS_SENDER`   | `OSSAI`                   | Alphanumeric sender ID, a purchased number, or a Messaging Service SID (`MG…`). |
-| `EMAIL_FROM`   | `welcome@ossai.co.uk`     | Must match the Trigger Email extension's authenticated sender. |
+| `EMAIL_FROM`   | `ossai@ossai.co.uk`       | Must match the Trigger Email extension's authenticated sender. |
 | `SITE_URL`     | `https://ossai.co.uk`     | Linked in the email button and SMS body. |
 | `EMAIL_SUBJECT`| `Ossai — Private Access`  | Welcome email subject. |
 
