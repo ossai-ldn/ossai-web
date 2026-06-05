@@ -1,18 +1,15 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Redirect } from 'expo-router';
 import { isSiteAccessGranted } from './accessSession';
 
-export function useRequireAccess() {
-  const router = useRouter();
-  const [allowed, setAllowed] = useState(false);
+/** @deprecated Prefer ShopGate layout or redirectIfNoAccess() */
+export function useRequireAccess(): boolean {
+  return isSiteAccessGranted();
+}
 
-  useEffect(() => {
-    if (!isSiteAccessGranted()) {
-      router.replace('/');
-      return;
-    }
-    setAllowed(true);
-  }, [router]);
-
-  return allowed;
+/** Render-time redirect — use at the top of gated screens outside shop/_layout. */
+export function redirectIfNoAccess() {
+  if (!isSiteAccessGranted()) {
+    return <Redirect href="/" />;
+  }
+  return null;
 }

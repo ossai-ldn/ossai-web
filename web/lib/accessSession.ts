@@ -1,8 +1,8 @@
-const ACCESS_KEY = 'ossai_site_access';
+export const ACCESS_KEY = 'ossai_site_access';
 const SHOP_LIVE_KEY = 'ossai_shop_live';
 const SIGNUP_ID_KEY = 'ossai_signup_id';
 const ADMIN_KEY = 'ossai_admin_secret';
-const ACCESS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const ACCESS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface AccessPayload {
   grantedAt: number;

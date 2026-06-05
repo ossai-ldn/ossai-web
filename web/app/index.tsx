@@ -16,7 +16,7 @@ import AnnouncementBar from '../components/AnnouncementBar';
 import OssaiLogo from '../components/OssaiLogo';
 import PasswordGateControls from '../components/PasswordGateControls';
 import SiteFooter from '../components/SiteFooter';
-import { setStoredSignupId } from '../lib/accessSession';
+import { isSiteAccessGranted, setStoredSignupId } from '../lib/accessSession';
 import { classifyContact } from '../lib/classifyContact';
 import { registerSignup } from '../lib/callables';
 import { setStoredDiscountCode } from '../lib/cartContext';
@@ -121,6 +121,20 @@ export default function Index() {
   `;
 
     const [isFocused, setIsFocused] = useState(false);
+    const [hasShopAccess, setHasShopAccess] = useState(isSiteAccessGranted);
+
+    useEffect(() => {
+        const sync = () => setHasShopAccess(isSiteAccessGranted());
+        sync();
+        if (typeof window !== 'undefined') {
+            window.addEventListener('storage', sync);
+            const id = setInterval(sync, 1000);
+            return () => {
+                window.removeEventListener('storage', sync);
+                clearInterval(id);
+            };
+        }
+    }, []);
 
     // 4. THE UI
     return (
@@ -152,12 +166,16 @@ export default function Index() {
                 <Text style={styles.heroTitle}>PRIVATE EXHIBITION</Text>
                 <Text style={styles.heroSub}>Contemporary form for those who wait.</Text>
 
-                {config.featuredCollectionHandle ? (
+                {config.featuredCollectionHandle && hasShopAccess ? (
                     <Link href={`/shop/collections/${config.featuredCollectionHandle}` as never} asChild>
                         <TouchableOpacity style={styles.ctaBanner} activeOpacity={0.85}>
                             <Text style={styles.ctaText}>VIEW CURRENT DROP →</Text>
                         </TouchableOpacity>
                     </Link>
+                ) : config.featuredCollectionHandle ? (
+                    <View style={styles.ctaBannerLocked}>
+                        <Text style={styles.ctaLockedText}>ENTER PASSWORD ABOVE TO VIEW THE DROP</Text>
+                    </View>
                 ) : null}
 
                 {/* --- NEWSLETTER SECTION --- */}
@@ -316,6 +334,19 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 11,
         letterSpacing: 3,
+    },
+    ctaBannerLocked: {
+        borderWidth: 1,
+        borderColor: '#2c2c2e',
+        paddingVertical: 14,
+        paddingHorizontal: 28,
+        marginBottom: 32,
+    },
+    ctaLockedText: {
+        color: '#8e8e93',
+        fontSize: 10,
+        letterSpacing: 3,
+        textAlign: 'center',
     },
     safeArea: {
         flex: 1,

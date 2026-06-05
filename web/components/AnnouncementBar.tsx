@@ -1,6 +1,8 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { isSiteAccessGranted } from '../lib/accessSession';
+import { isGatedPath } from '../lib/gatedRoutes';
 import { colors } from '../lib/theme';
 import { useSite } from '../lib/siteContext';
 import type { AnnouncementMessage } from '../lib/siteTypes';
@@ -9,8 +11,19 @@ const ROTATE_MS = 5000;
 
 export default function AnnouncementBar() {
   const { config } = useSite();
+  const router = useRouter();
+  const [hasAccess, setHasAccess] = useState(isSiteAccessGranted);
   const messages = config.announcementBar.messages.filter((m) => m.text.trim());
   const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const sync = () => setHasAccess(isSiteAccessGranted());
+    sync();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', sync);
+      return () => window.removeEventListener('storage', sync);
+    }
+  }, []);
 
   useEffect(() => {
     if (messages.length <= 1) return;
@@ -23,6 +36,9 @@ export default function AnnouncementBar() {
   if (!config.announcementBar.enabled || messages.length === 0) return null;
 
   const current: AnnouncementMessage = messages[index] ?? messages[0];
+  const link = current.link?.trim();
+  const linkIsGated = link ? isGatedPath(link) : false;
+  const canFollowLink = link && (!linkIsGated || hasAccess);
 
   const content = (
     <Text style={styles.text} numberOfLines={1}>
@@ -32,12 +48,20 @@ export default function AnnouncementBar() {
 
   return (
     <View style={styles.bar}>
-      {current.link ? (
-        <Link href={current.link as never} asChild>
+      {canFollowLink ? (
+        <Link href={link as never} asChild>
           <TouchableOpacity style={styles.inner} activeOpacity={0.8}>
             {content}
           </TouchableOpacity>
         </Link>
+      ) : link && linkIsGated ? (
+        <TouchableOpacity
+          style={styles.inner}
+          activeOpacity={0.8}
+          onPress={() => router.replace('/')}
+        >
+          {content}
+        </TouchableOpacity>
       ) : (
         <View style={styles.inner}>{content}</View>
       )}

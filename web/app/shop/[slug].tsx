@@ -25,12 +25,10 @@ import {
 } from '../../lib/productTypes';
 import { useSite } from '../../lib/siteContext';
 import { colors } from '../../lib/theme';
-import { useRequireAccess } from '../../lib/useRequireAccess';
 
 export default function ProductDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
-  const allowed = useRequireAccess();
   const { shopLive, openDrawer } = useSite();
   const { addLine } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
@@ -42,7 +40,7 @@ export default function ProductDetailScreen() {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
-    if (!allowed || !slug) return;
+    if (!slug) return;
     loadProductBySlug(slug)
       .then((p) => {
         setProduct(p);
@@ -53,7 +51,7 @@ export default function ProductDetailScreen() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [slug, allowed]);
+  }, [slug]);
 
   const colorVariants = useMemo(
     () => (product ? getVariantsForColor(product, selectedColor) : []),
@@ -110,7 +108,7 @@ export default function ProductDetailScreen() {
     }
   };
 
-  if (!allowed || loading) {
+  if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color="#fff" />

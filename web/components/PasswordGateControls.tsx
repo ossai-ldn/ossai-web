@@ -44,6 +44,9 @@ export default function PasswordGateControls({ navigateOnUnlock = true, compact 
       grantSiteAccess(result.shopLive);
       setUnlocked(true);
       setPassword('');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'));
+      }
       if (navigateOnUnlock) {
         router.push('/shop');
       }

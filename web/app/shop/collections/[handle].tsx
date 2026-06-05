@@ -20,11 +20,9 @@ import {
 import type { Collection } from '../../../lib/siteTypes';
 import type { Product } from '../../../lib/productTypes';
 import { colors } from '../../../lib/theme';
-import { useRequireAccess } from '../../../lib/useRequireAccess';
 
 export default function CollectionScreen() {
   const { handle } = useLocalSearchParams<{ handle: string }>();
-  const allowed = useRequireAccess();
   const [collection, setCollection] = useState<Collection | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +30,7 @@ export default function CollectionScreen() {
   const [filterAvail, setFilterAvail] = useState<'all' | 'in-stock' | 'coming-soon'>('all');
 
   useEffect(() => {
-    if (!allowed || !handle) return;
+    if (!handle) return;
     const load = async () => {
       const [col, allProducts] = await Promise.all([
         loadCollectionByHandle(handle),
@@ -44,7 +42,7 @@ export default function CollectionScreen() {
       setLoading(false);
     };
     load().catch(() => setLoading(false));
-  }, [allowed, handle]);
+  }, [handle]);
 
   const displayed = useMemo(() => {
     let list = products;
@@ -52,14 +50,6 @@ export default function CollectionScreen() {
     if (filterAvail === 'coming-soon') list = filterProducts(list, { availability: 'coming-soon' });
     return sortProducts(list, sort);
   }, [products, sort, filterAvail]);
-
-  if (!allowed) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color="#fff" />
-      </View>
-    );
-  }
 
   return (
     <PageShell

@@ -9,21 +9,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import PageShell from '../components/PageShell';
-import ProductGrid from '../components/ProductGrid';
-import { copyToClipboard, getStoredSignupId, setStoredSignupId } from '../lib/accessSession';
-import { loadActiveCollections, loadActiveProducts } from '../lib/catalog';
-import { classifyContact } from '../lib/classifyContact';
-import { fetchMyDiscount } from '../lib/callables';
-import { setStoredDiscountCode } from '../lib/cartContext';
-import type { Product } from '../lib/productTypes';
-import { useSite } from '../lib/siteContext';
-import type { Collection } from '../lib/siteTypes';
-import { colors } from '../lib/theme';
-import { useRequireAccess } from '../lib/useRequireAccess';
+import PageShell from '../../components/PageShell';
+import ProductGrid from '../../components/ProductGrid';
+import { copyToClipboard, getStoredSignupId, setStoredSignupId } from '../../lib/accessSession';
+import { loadActiveCollections, loadActiveProducts } from '../../lib/catalog';
+import { classifyContact } from '../../lib/classifyContact';
+import { fetchMyDiscount } from '../../lib/callables';
+import { setStoredDiscountCode } from '../../lib/cartContext';
+import type { Product } from '../../lib/productTypes';
+import { useSite } from '../../lib/siteContext';
+import type { Collection } from '../../lib/siteTypes';
+import { colors } from '../../lib/theme';
 
 export default function ShopScreen() {
-  const allowed = useRequireAccess();
   const { shopLive, config } = useSite();
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -51,7 +49,6 @@ export default function ShopScreen() {
   }, []);
 
   useEffect(() => {
-    if (!allowed) return;
     loadDiscount().catch(() => undefined);
     Promise.all([loadActiveProducts(), loadActiveCollections()])
       .then(([prods, cols]) => {
@@ -60,7 +57,7 @@ export default function ShopScreen() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [allowed, loadDiscount]);
+  }, [loadDiscount]);
 
   const handleLookup = async () => {
     const contact = classifyContact(lookupContact);
@@ -95,14 +92,6 @@ export default function ShopScreen() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
-
-  if (!allowed) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color="#fff" />
-      </View>
-    );
-  }
 
   const featuredHandle = config.featuredCollectionHandle || 'ss26';
 
@@ -183,7 +172,6 @@ export default function ShopScreen() {
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
   heroSub: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 28, lineHeight: 20 },
   collectionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20, justifyContent: 'center' },
   collectionChip: { borderWidth: 1, borderColor: colors.border, paddingVertical: 8, paddingHorizontal: 14 },

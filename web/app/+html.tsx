@@ -31,6 +31,27 @@ export default function Root({ children }: PropsWithChildren) {
                     }}
                 />
 
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+(function () {
+  var path = location.pathname.replace(/\\/+$/,'') || '/';
+  var gated = path === '/search' || path === '/shop' || path.indexOf('/shop/') === 0;
+  if (!gated) return;
+  var TTL = ${30 * 24 * 60 * 60 * 1000};
+  try {
+    var raw = localStorage.getItem('ossai_site_access');
+    if (!raw) { location.replace('/'); return; }
+    var p = JSON.parse(raw);
+    if (!p.grantedAt || Date.now() - p.grantedAt >= TTL) location.replace('/');
+  } catch (e) {
+    location.replace('/');
+  }
+})();
+`,
+                    }}
+                />
+
                 <ScrollViewStyleReset />
             </head>
             <body>{children}</body>
