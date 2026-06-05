@@ -12,10 +12,15 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import AnnouncementBar from '../components/AnnouncementBar';
 import PasswordGateControls from '../components/PasswordGateControls';
+import SiteFooter from '../components/SiteFooter';
 import { setStoredSignupId } from '../lib/accessSession';
 import { classifyContact } from '../lib/classifyContact';
 import { registerSignup } from '../lib/callables';
+import { setStoredDiscountCode } from '../lib/cartContext';
+import { useSite } from '../lib/siteContext';
+import { Link } from 'expo-router';
 
 const HEADER_HEIGHT = 110;
 const ERROR_RESET_DELAY_MS = 2000;
@@ -23,7 +28,7 @@ const SUCCESS_RESET_DELAY_MS = 3000;
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
 export default function Index() {
-    // 1. STATE DEFINITIONS
+    const { config } = useSite();
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<Status>('idle');
     const [discountPreview, setDiscountPreview] = useState('');
@@ -74,6 +79,7 @@ export default function Index() {
                         : Platform.OS,
             });
             setStoredSignupId(result.signupId);
+            if (result.discountCode) setStoredDiscountCode(result.discountCode);
             setDiscountPreview(
                 result.discountCode
                     ? `${result.discountCode} · ${result.discountPercent}% off`
@@ -131,7 +137,7 @@ export default function Index() {
             {/* --- LAYER 1: Scrollable Content --- */}
             <ScrollView
                 contentContainerStyle={{
-                    paddingTop: HEADER_HEIGHT + 20,
+                    paddingTop: HEADER_HEIGHT + 52,
                     paddingBottom: 40,
                     paddingHorizontal: 20,
                     flexGrow: 1, // Use flexGrow instead of flex: 1 for ScrollViews
@@ -141,10 +147,24 @@ export default function Index() {
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
             >
+                <Text style={styles.heroTag}>SS26 — PERSEVERANCE</Text>
+                <Text style={styles.heroTitle}>PRIVATE EXHIBITION</Text>
+                <Text style={styles.heroSub}>Contemporary form for those who wait.</Text>
+
+                {config.featuredCollectionHandle ? (
+                    <Link href={`/shop/collections/${config.featuredCollectionHandle}` as never} asChild>
+                        <TouchableOpacity style={styles.ctaBanner} activeOpacity={0.85}>
+                            <Text style={styles.ctaText}>VIEW CURRENT DROP →</Text>
+                        </TouchableOpacity>
+                    </Link>
+                ) : null}
+
                 {/* --- NEWSLETTER SECTION --- */}
                 <View style={styles.newsletterCard}>
                     <Text style={styles.newsletterTitle}>NEWSLETTER</Text>
-                    <Text style={styles.newsletterSub}>Sign up for events and drops</Text>
+                    <Text style={styles.newsletterSub}>
+                        {config.newsletterPromoText || 'Sign up for events and drops'}
+                    </Text>
 
                     {/* Container for Input and Button (Now Stacked) */}
                     <View style={styles.formContainer}>
@@ -196,19 +216,16 @@ export default function Index() {
                     </View>
                 </View>
 
-                {/* --- FOOTER --- */}
-                <View style={styles.footer}>
-                    <View style={styles.divider} />
-                    <Text style={styles.copyright}>
-                        © Ossai 2025. All rights reserved.
-                    </Text>
-                </View>
+                <SiteFooter />
             </ScrollView>
 
+            <View style={styles.announcementWrap}>
+                <AnnouncementBar />
+            </View>
             <BlurView intensity={30} tint="dark" style={styles.header}>
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.passwordTopRight}>
-                        <PasswordGateControls navigateOnUnlock={false} />
+                        <PasswordGateControls navigateOnUnlock />
                     </View>
                     <View style={styles.headerContent}>
                         <Image
@@ -253,14 +270,55 @@ const styles = StyleSheet.create({
         opacity: 0.12,
         pointerEvents: 'none',
     },
-    header: {
+    announcementWrap: {
         position: 'absolute',
         top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 101,
+    },
+    header: {
+        position: 'absolute',
+        top: 32,
         left: 0,
         right: 0,
         height: HEADER_HEIGHT,
         zIndex: 100,
         overflow: 'hidden',
+    },
+    heroTag: {
+        color: '#8e8e93',
+        fontSize: 10,
+        letterSpacing: 5,
+        textAlign: 'center',
+        marginBottom: 8,
+        marginTop: 12,
+    },
+    heroTitle: {
+        color: '#fff',
+        fontSize: 28,
+        letterSpacing: 8,
+        textAlign: 'center',
+        fontWeight: '300',
+        marginBottom: 8,
+    },
+    heroSub: {
+        color: '#8e8e93',
+        fontSize: 13,
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    ctaBanner: {
+        borderWidth: 1,
+        borderColor: '#fff',
+        paddingVertical: 14,
+        paddingHorizontal: 28,
+        marginBottom: 32,
+    },
+    ctaText: {
+        color: '#fff',
+        fontSize: 11,
+        letterSpacing: 3,
     },
     safeArea: {
         flex: 1,

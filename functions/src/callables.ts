@@ -6,7 +6,7 @@ import { DEFAULT_DISCOUNT_PERCENT } from './discount';
 import { productPayloadFromRequest, slugify } from './productUtils';
 import { findSignupByContact } from './signupLookup';
 import { assignUniqueDiscount, ensureSignupDiscount } from './signupDiscount';
-import { getAccessConfig, setAccessConfig } from './siteConfig';
+import { getAccessConfig, publicConfigFromAccess, setAccessConfig } from './siteConfig';
 
 const ADMIN_SECRET = defineSecret('ADMIN_SECRET');
 
@@ -100,6 +100,47 @@ export const getSiteStatus = onCall({ region: REGION }, async () => {
   return { shopLive: config.shopLive };
 });
 
+/** Public site config for announcement bar, promos, featured collection. */
+export const getPublicSiteConfig = onCall({ region: REGION }, async () => {
+  const config = await getAccessConfig();
+  return publicConfigFromAccess(config);
+});
+
+/** Register back-in-stock alert for a variant. */
+export const registerRestockAlert = onCall({ region: REGION }, async (request) => {
+  const db = getFirestore();
+  const productId = typeof request.data?.productId === 'string' ? request.data.productId.trim() : '';
+  const variantId = typeof request.data?.variantId === 'string' ? request.data.variantId.trim() : '';
+  const emailRaw = typeof request.data?.email === 'string' ? request.data.email.trim() : '';
+  const parsed = normalizeContact(emailRaw);
+  if (!productId || !variantId || !parsed || parsed.type !== 'email') {
+    throw new HttpsError('invalid-argument', 'productId, variantId, and valid email required.');
+  }
+
+  const existing = await db
+    .collection('restockAlerts')
+    .where('productId', '==', productId)
+    .where('variantId', '==', variantId)
+    .where('email', '==', parsed.value)
+    .where('notified', '==', false)
+    .limit(1)
+    .get();
+
+  if (!existing.empty) {
+    return { ok: true, existing: true };
+  }
+
+  await db.collection('restockAlerts').add({
+    productId,
+    variantId,
+    email: parsed.value,
+    notified: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  return { ok: true, existing: false };
+});
+
 /** Looks up a signup discount by id or contact (email/phone). */
 export const getMyDiscount = onCall({ region: REGION }, async (request) => {
   const db = getFirestore();
@@ -177,6 +218,173 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
     case 'setShopOffline': {
       const config = await setAccessConfig({ shopLive: false });
       return { config };
+    }
+    case 'setSitePromos': {
+      const partial: Record<string, unknown> = {};
+      if (typeof request.data?.shippingPromoText === 'string') {
+        partial.shippingPromoText = request.data.shippingPromoText.trim().slice(0, 200);
+      }
+      if (typeof request.data?.newsletterPromoText === 'string') {
+        partial.newsletterPromoText = request.data.newsletterPromoText.trim().slice(0, 300);
+      }
+      if (typeof request.data?.featuredCollectionHandle === 'string') {
+        partial.featuredCollectionHandle = request.data.featuredCollectionHandle.trim().slice(0, 64);
+      }
+      if (request.data?.announcementBar && typeof request.data.announcementBar === 'object') {
+        const bar = request.data.announcementBar as Record<string, unknown>;
+        partial.announcementBar = {
+          enabled: bar.enabled !== false,
+          messages: Array.isArray(bar.messages) ? bar.messages : [],
+        };
+      }
+      const config = await setAccessConfig(partial);
+      return { config };
+    }
+    case 'listCollections': {
+      const snap = await db.collection('collections').orderBy('sortOrder', 'asc').get();
+      return { collections: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) };
+    }
+    case 'upsertCollection': {
+      const id = typeof request.data?.collectionId === 'string' ? request.data.collectionId : '';
+      const handle =
+        typeof request.data?.handle === 'string'
+          ? request.data.handle.trim().toLowerCase()
+          : '';
+      const title = typeof request.data?.title === 'string' ? request.data.title.trim() : '';
+      if (!handle || !title) {
+        throw new HttpsError('invalid-argument', 'handle and title required.');
+      }
+      const payload = {
+        handle,
+        title,
+        description:
+          typeof request.data?.description === 'string' ? request.data.description.trim() : '',
+        heroImageUrl:
+          typeof request.data?.heroImageUrl === 'string' ? request.data.heroImageUrl.trim() : '',
+        seasonLabel:
+          typeof request.data?.seasonLabel === 'string' ? request.data.seasonLabel.trim() : '',
+        sortOrder: Number(request.data?.sortOrder ?? 0),
+        active: request.data?.active !== false,
+        updatedAt: new Date(),
+      };
+      if (id) {
+        await db.collection('collections').doc(id).set(payload, { merge: true });
+        return { collectionId: id };
+      }
+      const ref = await db.collection('collections').add({ ...payload, createdAt: new Date() });
+      return { collectionId: ref.id };
+    }
+    case 'deleteCollection': {
+      const collectionId =
+        typeof request.data?.collectionId === 'string' ? request.data.collectionId : '';
+      if (!collectionId) throw new HttpsError('invalid-argument', 'collectionId required.');
+      await db.collection('collections').doc(collectionId).delete();
+      return { ok: true };
+    }
+    case 'listPages': {
+      const snap = await db.collection('pages').orderBy('slug', 'asc').get();
+      return { pages: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) };
+    }
+    case 'upsertPage': {
+      const id = typeof request.data?.pageId === 'string' ? request.data.pageId : '';
+      const slug =
+        typeof request.data?.slug === 'string' ? request.data.slug.trim().toLowerCase() : '';
+      const title = typeof request.data?.title === 'string' ? request.data.title.trim() : '';
+      if (!slug || !title) {
+        throw new HttpsError('invalid-argument', 'slug and title required.');
+      }
+      const payload = {
+        slug,
+        title,
+        sections: Array.isArray(request.data?.sections) ? request.data.sections : [],
+        active: request.data?.active !== false,
+        updatedAt: new Date(),
+      };
+      if (id) {
+        await db.collection('pages').doc(id).set(payload, { merge: true });
+        return { pageId: id };
+      }
+      const ref = await db.collection('pages').add({ ...payload, createdAt: new Date() });
+      return { pageId: ref.id };
+    }
+    case 'listPress': {
+      const snap = await db.collection('pressItems').orderBy('sortOrder', 'asc').get();
+      return { pressItems: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) };
+    }
+    case 'upsertPress': {
+      const id = typeof request.data?.pressId === 'string' ? request.data.pressId : '';
+      const quote = typeof request.data?.quote === 'string' ? request.data.quote.trim() : '';
+      if (!quote) throw new HttpsError('invalid-argument', 'quote required.');
+      const payload = {
+        quote,
+        source: typeof request.data?.source === 'string' ? request.data.source.trim() : '',
+        url: typeof request.data?.url === 'string' ? request.data.url.trim() : '',
+        sortOrder: Number(request.data?.sortOrder ?? 0),
+        active: request.data?.active !== false,
+        updatedAt: new Date(),
+      };
+      if (id) {
+        await db.collection('pressItems').doc(id).set(payload, { merge: true });
+        return { pressId: id };
+      }
+      const ref = await db.collection('pressItems').add({ ...payload, createdAt: new Date() });
+      return { pressId: ref.id };
+    }
+    case 'deletePress': {
+      const pressId = typeof request.data?.pressId === 'string' ? request.data.pressId : '';
+      if (!pressId) throw new HttpsError('invalid-argument', 'pressId required.');
+      await db.collection('pressItems').doc(pressId).delete();
+      return { ok: true };
+    }
+    case 'listArchives': {
+      const snap = await db.collection('archives').orderBy('sortOrder', 'asc').get();
+      return { archives: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) };
+    }
+    case 'upsertArchive': {
+      const id = typeof request.data?.archiveId === 'string' ? request.data.archiveId : '';
+      const title = typeof request.data?.title === 'string' ? request.data.title.trim() : '';
+      if (!title) throw new HttpsError('invalid-argument', 'title required.');
+      const payload = {
+        title,
+        season: typeof request.data?.season === 'string' ? request.data.season.trim() : '',
+        url: typeof request.data?.url === 'string' ? request.data.url.trim() : '',
+        sortOrder: Number(request.data?.sortOrder ?? 0),
+        active: request.data?.active !== false,
+        updatedAt: new Date(),
+      };
+      if (id) {
+        await db.collection('archives').doc(id).set(payload, { merge: true });
+        return { archiveId: id };
+      }
+      const ref = await db.collection('archives').add({ ...payload, createdAt: new Date() });
+      return { archiveId: ref.id };
+    }
+    case 'deleteArchive': {
+      const archiveId = typeof request.data?.archiveId === 'string' ? request.data.archiveId : '';
+      if (!archiveId) throw new HttpsError('invalid-argument', 'archiveId required.');
+      await db.collection('archives').doc(archiveId).delete();
+      return { ok: true };
+    }
+    case 'listRestockAlerts': {
+      const snap = await db
+        .collection('restockAlerts')
+        .where('notified', '==', false)
+        .orderBy('createdAt', 'desc')
+        .limit(100)
+        .get();
+      return {
+        alerts: snap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toMillis?.() ?? null,
+        })),
+      };
+    }
+    case 'markRestockNotified': {
+      const alertId = typeof request.data?.alertId === 'string' ? request.data.alertId : '';
+      if (!alertId) throw new HttpsError('invalid-argument', 'alertId required.');
+      await db.collection('restockAlerts').doc(alertId).update({ notified: true });
+      return { ok: true };
     }
     case 'backfillSignups': {
       const snap = await db.collection('signups').orderBy('createdAt', 'desc').limit(500).get();

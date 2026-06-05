@@ -18,6 +18,34 @@ export async function fetchSiteStatus() {
   return result.data;
 }
 
+export async function fetchPublicSiteConfig() {
+  const fn = httpsCallable<
+    unknown,
+    {
+      shopLive: boolean;
+      announcementBar: { enabled: boolean; messages: { text: string; link?: string }[] };
+      shippingPromoText: string;
+      newsletterPromoText: string;
+      featuredCollectionHandle: string;
+    }
+  >(functions, 'getPublicSiteConfig');
+  const result = await fn({});
+  return result.data;
+}
+
+export async function registerRestockAlert(params: {
+  productId: string;
+  variantId: string;
+  email: string;
+}) {
+  const fn = httpsCallable<
+    { productId: string; variantId: string; email: string },
+    { ok: boolean; existing: boolean }
+  >(functions, 'registerRestockAlert');
+  const result = await fn(params);
+  return result.data;
+}
+
 export async function registerSignup(params: {
   contact: string;
   source?: string;

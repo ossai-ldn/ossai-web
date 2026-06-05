@@ -10,6 +10,9 @@ export type ProductCardData = {
   imageFront: string;
   imageBack: string;
   soldOut: boolean;
+  comingSoon?: boolean;
+  collabLabel?: string;
+  priceFrom?: boolean;
 };
 
 type Props = {
@@ -32,16 +35,27 @@ export default function ProductCard({ product }: Props) {
           style={styles.imageWrap}
           soldOut={product.soldOut}
         />
-        {product.soldOut && (
+        {product.collabLabel ? (
+          <View style={[styles.soldOutBadge, styles.collabBadge]}>
+            <Text style={styles.soldOutText}>{product.collabLabel.toUpperCase()}</Text>
+          </View>
+        ) : null}
+        {product.comingSoon && !product.soldOut ? (
+          <View style={styles.soldOutBadge}>
+            <Text style={styles.soldOutText}>COMING SOON</Text>
+          </View>
+        ) : product.soldOut ? (
           <View style={styles.soldOutBadge}>
             <Text style={styles.soldOutText}>SOLD OUT</Text>
           </View>
-        )}
+        ) : null}
         <Text style={styles.cardTitle} numberOfLines={2}>
           {product.title.toUpperCase()}
         </Text>
         {product.priceDisplay ? (
-          <Text style={styles.cardPrice}>{product.priceDisplay}</Text>
+          <Text style={styles.cardPrice}>
+            {product.priceFrom ? `FROM ${product.priceDisplay}` : product.priceDisplay}
+          </Text>
         ) : null}
       </TouchableOpacity>
     </Link>
@@ -67,6 +81,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   soldOutText: { color: '#fff', fontSize: 9, letterSpacing: 2 },
+  collabBadge: { backgroundColor: 'rgba(28,28,30,0.9)' },
   cardTitle: { color: '#fff', fontSize: 11, letterSpacing: 1, marginBottom: 4 },
   cardPrice: { color: '#8e8e93', fontSize: 12 },
 });

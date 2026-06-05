@@ -7,7 +7,9 @@ import twilio from 'twilio';
 import {
   adminApi,
   getMyDiscount,
+  getPublicSiteConfig,
   getSiteStatus,
+  registerRestockAlert,
   registerSignup,
   verifySitePassword,
 } from './callables';
@@ -16,7 +18,15 @@ import { renderWelcomeEmail } from './welcomeEmail';
 
 initializeApp();
 
-export { verifySitePassword, getSiteStatus, getMyDiscount, registerSignup, adminApi };
+export {
+  verifySitePassword,
+  getSiteStatus,
+  getPublicSiteConfig,
+  getMyDiscount,
+  registerSignup,
+  registerRestockAlert,
+  adminApi,
+};
 
 const TWILIO_ACCOUNT_SID = defineSecret('TWILIO_ACCOUNT_SID');
 const TWILIO_AUTH_TOKEN = defineSecret('TWILIO_AUTH_TOKEN');

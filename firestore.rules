@@ -4,7 +4,6 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /signups/{id} {
-      // Created via registerSignup callable only (deduped server-side).
       allow create: if false;
       allow read, update, delete: if false;
     }
@@ -17,8 +16,31 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public catalog for the shop grid (gated in the app by site password session).
+    match /restockAlerts/{id} {
+      allow read, write: if false;
+    }
+
     match /products/{id} {
+      allow read: if resource.data.active == true;
+      allow write: if false;
+    }
+
+    match /collections/{id} {
+      allow read: if resource.data.active == true;
+      allow write: if false;
+    }
+
+    match /pages/{id} {
+      allow read: if resource.data.active == true;
+      allow write: if false;
+    }
+
+    match /pressItems/{id} {
+      allow read: if resource.data.active == true;
+      allow write: if false;
+    }
+
+    match /archives/{id} {
       allow read: if resource.data.active == true;
       allow write: if false;
     }
@@ -28,4 +50,3 @@ service cloud.firestore {
     }
   }
 }
-

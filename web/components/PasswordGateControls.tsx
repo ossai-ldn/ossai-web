@@ -15,9 +15,10 @@ import { fetchSiteStatus, verifySitePassword } from '../lib/callables';
 type Props = {
   /** When true, navigating to /shop after unlock (default on home). */
   navigateOnUnlock?: boolean;
+  compact?: boolean;
 };
 
-export default function PasswordGateControls({ navigateOnUnlock = true }: Props) {
+export default function PasswordGateControls({ navigateOnUnlock = true, compact = false }: Props) {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [unlocked, setUnlocked] = useState(false);
@@ -66,10 +67,10 @@ export default function PasswordGateControls({ navigateOnUnlock = true }: Props)
   }
 
   return (
-    <View style={styles.passwordRow}>
+    <View style={[styles.passwordRow, compact && styles.passwordRowCompact]}>
       <TextInput
-        style={[styles.passwordInput, error && styles.passwordInputError]}
-        placeholder="Enter password"
+        style={[styles.passwordInput, compact && styles.passwordInputCompact, error && styles.passwordInputError]}
+        placeholder={compact ? 'Password' : 'Enter password'}
         placeholderTextColor="#666"
         value={password}
         onChangeText={(t) => {
@@ -107,6 +108,9 @@ const styles = StyleSheet.create({
     gap: 8,
     maxWidth: 260,
   },
+  passwordRowCompact: {
+    maxWidth: 200,
+  },
   passwordInput: {
     width: 140,
     height: 36,
@@ -117,6 +121,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     borderWidth: 0,
     ...(Platform.OS === 'web' ? { outlineStyle: 'none' as const } : {}),
+  },
+  passwordInputCompact: {
+    width: 100,
+    height: 32,
+    fontSize: 11,
   },
   passwordInputError: {
     borderWidth: 1,
