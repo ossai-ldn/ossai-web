@@ -1,0 +1,40 @@
+name: Set Exhibition Live
+
+on:
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ['Deploy Web to GitHub Pages']
+    types: [completed]
+    branches: [main]
+
+jobs:
+  go-live:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set shopLive via adminApi
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "ADMIN_SECRET not configured in GitHub repo secrets — skip auto go-live."
+            echo "Set shop live manually at https://ossai.co.uk/admin"
+            exit 0
+          fi
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"data\":{\"adminSecret\":\"$ADMIN_SECRET\",\"action\":\"setShopLive\"}}" \
+            "https://europe-west2-ossai-82889.cloudfunctions.net/adminApi")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "$BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "adminApi returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "Exhibition is now LIVE."
+
+      - name: Verify shop status
+        run: |
+          curl -s -X POST -H "Content-Type: application/json" -d '{"data":{}}' \
+            "https://europe-west2-ossai-82889.cloudfunctions.net/getSiteStatus"
