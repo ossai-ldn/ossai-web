@@ -16,6 +16,20 @@ export default function Root({ children }: PropsWithChildren) {
 
                 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
                 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+                <link rel="preload" href="/fonts/Brique-Regular.otf" as="font" type="font/otf" crossOrigin="" />
+                <style
+                    dangerouslySetInnerHTML={{
+                        __html: `
+@font-face {
+  font-family: 'Brique';
+  src: url('/fonts/Brique-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+`,
+                    }}
+                />
 
                 <ScrollViewStyleReset />
             </head>

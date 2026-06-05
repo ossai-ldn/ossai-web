@@ -1,15 +1,18 @@
 import { BlurView } from 'expo-blur';
 import { Slot } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Image, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import MobileMenu from '../components/MobileMenu';
+import OssaiLogo from '../components/OssaiLogo';
 import ShoppingBagDrawer from '../components/ShoppingBagDrawer';
 import SiteHeader from '../components/SiteHeader';
 import SubscribeDrawer from '../components/SubscribeDrawer';
 import { CartProvider } from '../lib/cartContext';
 import { SiteProvider } from '../lib/siteContext';
+import { useOssaiFonts } from '../lib/useFonts';
 
 export default function RootLayout() {
+  useOssaiFonts();
   const [isOverlayVisible, setIsOverlayVisible] = useState(true);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -46,11 +49,7 @@ export default function RootLayout() {
             <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
               <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="dark">
                 <View style={styles.centered}>
-                  <Image
-                    source={require('../assets/images/name_logo_white.png')}
-                    style={styles.logo}
-                    resizeMode="contain"
-                  />
+                  <OssaiLogo size="splash" preferText />
                 </View>
               </BlurView>
             </Animated.View>
@@ -71,8 +70,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logo: {
-    width: '80%',
   },
 });

@@ -14,6 +14,7 @@ import { useOptionalCart } from '../lib/cartContext';
 import { useSite } from '../lib/siteContext';
 import { colors } from '../lib/theme';
 import AnnouncementBar from './AnnouncementBar';
+import OssaiLogo from './OssaiLogo';
 import PasswordGateControls from './PasswordGateControls';
 
 const NAV_LINKS = [
@@ -66,7 +67,7 @@ export default function SiteHeader() {
 
             <Link href="/" asChild>
               <TouchableOpacity style={styles.logoWrap} activeOpacity={0.8}>
-                <Text style={styles.logoText}>OSSAI</Text>
+                <OssaiLogo size="sm" preferText />
               </TouchableOpacity>
             </Link>
 
@@ -157,12 +158,6 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     paddingHorizontal: 12,
-  },
-  logoText: {
-    color: colors.text,
-    fontSize: 16,
-    letterSpacing: 6,
-    fontWeight: '600',
   },
   right: {
     flexDirection: 'row',

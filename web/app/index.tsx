@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import AnnouncementBar from '../components/AnnouncementBar';
+import OssaiLogo from '../components/OssaiLogo';
 import PasswordGateControls from '../components/PasswordGateControls';
 import SiteFooter from '../components/SiteFooter';
 import { setStoredSignupId } from '../lib/accessSession';
@@ -228,11 +229,7 @@ export default function Index() {
                         <PasswordGateControls navigateOnUnlock />
                     </View>
                     <View style={styles.headerContent}>
-                        <Image
-                            source={require('../assets/images/base_opt_white.png')}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
+                        <OssaiLogo size="md" preferText />
                     </View>
                 </SafeAreaView>
             </BlurView>
@@ -336,10 +333,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    logo: {
-        width: 100,
-        height: 100,
     },
     heading: {
         fontSize: 32,
