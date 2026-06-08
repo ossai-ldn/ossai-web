@@ -37,7 +37,10 @@ export const registerSignup = onCall({ region: REGION }, async (request) => {
     typeof request.data?.contact === 'string' ? request.data.contact.trim() : '';
   const parsed = normalizeContact(contactRaw);
   if (!parsed) {
-    throw new HttpsError('invalid-argument', 'Enter a valid email or phone number.');
+    throw new HttpsError(
+      'invalid-argument',
+      'Enter a valid email or UK/international phone (e.g. 07… or +44 7…).',
+    );
   }
 
   const source =
@@ -193,6 +196,7 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
 
       let merged = 0;
       let codesAssigned = 0;
+      let phonesFixed = 0;
 
       for (const [, docs] of byContact) {
         docs.sort((a, b) => {
@@ -208,6 +212,8 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
         const keeper = docs[0];
         const parsed = normalizeContact(String(keeper.data().contact ?? ''));
         if (parsed) {
+          const prev = String(keeper.data().contact ?? '');
+          if (parsed.type === 'phone' && prev !== parsed.value) phonesFixed++;
           await keeper.ref.update({ contact: parsed.value, type: parsed.type });
         }
 
@@ -223,7 +229,7 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
         }
       }
 
-      return { ok: true, merged, codesAssigned, contacts: byContact.size };
+      return { ok: true, merged, codesAssigned, phonesFixed, contacts: byContact.size };
     }
     case 'listSignups': {
       const snap = await db.collection('signups').orderBy('createdAt', 'desc').limit(100).get();

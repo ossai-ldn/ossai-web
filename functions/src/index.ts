@@ -12,6 +12,7 @@ import {
   verifySitePassword,
 } from './callables';
 import { ensureSignupDiscount } from './signupDiscount';
+import { phoneForTwilio } from './contact';
 import { renderWelcomeEmail } from './welcomeEmail';
 
 initializeApp();
@@ -75,6 +76,19 @@ export const sendWelcome = onDocumentCreated(
     }
 
     if (data.type === 'phone') {
+      const to = phoneForTwilio(data.contact);
+      if (!to) {
+        logger.warn('Skipping SMS — invalid phone number', {
+          id: signupId,
+          contact: data.contact,
+        });
+        return;
+      }
+
+      if (to !== data.contact) {
+        await db.collection('signups').doc(signupId).update({ contact: to });
+      }
+
       try {
         const client = twilio(TWILIO_ACCOUNT_SID.value(), TWILIO_AUTH_TOKEN.value());
         const sender = SMS_SENDER.value();
@@ -83,14 +97,14 @@ export const sendWelcome = onDocumentCreated(
           : { from: sender };
 
         await client.messages.create({
-          to: data.contact,
+          to,
           body: `Welcome to Ossai. Your code: ${discountCode} (${discountPercent}% off). Visit ${siteUrl}`,
           ...senderOpts,
         });
         await db.collection('signups').doc(signupId).update({ welcomeSent: true });
-        logger.info('Sent welcome SMS', { id: signupId });
+        logger.info('Sent welcome SMS', { id: signupId, to });
       } catch (err) {
-        logger.error('SMS failed (discount still saved)', { id: signupId, err });
+        logger.error('SMS failed (discount still saved)', { id: signupId, to, err });
       }
       return;
     }

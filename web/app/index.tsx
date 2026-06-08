@@ -65,8 +65,9 @@ export default function Index() {
         setStatus('loading');
 
         try {
+            // Send raw input — server normalizes to E.164 (single source of truth).
             const result = await registerSignup({
-                contact: contact.value,
+                contact: email.trim(),
                 source: 'web-landing',
                 userAgent:
                     Platform.OS === 'web' && typeof navigator !== 'undefined'
@@ -154,7 +155,7 @@ export default function Index() {
                                 status === 'error' && { borderWidth: 1, borderColor: '#FF3B30' }
                             ]}
                             // 2. Logic to hide placeholder on focus
-                            placeholder={isFocused ? '' : "Enter your email or number"}
+                            placeholder={isFocused ? '' : "Email or UK mobile (07… or +44…)"}
                             placeholderTextColor="#666"
 
                             // 3. Add these two handlers

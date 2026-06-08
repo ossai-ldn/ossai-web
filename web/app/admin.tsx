@@ -125,7 +125,7 @@ export default function AdminScreen() {
       const result = await adminRequest<Record<string, unknown>>(s, action, payload);
       if (action === 'backfillSignups' && result) {
         setMessage(
-          `Backfill: ${result.merged ?? 0} duplicates removed, ${result.codesAssigned ?? 0} codes assigned.`,
+          `Backfill: ${result.merged ?? 0} duplicates removed, ${result.codesAssigned ?? 0} codes assigned, ${result.phonesFixed ?? 0} phones fixed to E.164.`,
         );
       } else {
         setMessage(`Done: ${action}`);

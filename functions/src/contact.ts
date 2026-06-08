@@ -1,6 +1,54 @@
 export type ContactType = 'email' | 'phone';
 
-/** Normalizes email/phone for storage and deduplication. */
+const E164_RE = /^\+[1-9]\d{6,14}$/;
+
+function digitsOnly(raw: string): string {
+  return raw.replace(/\D/g, '');
+}
+
+function isObviouslyInvalid(digits: string): boolean {
+  if (digits.length < 7) return true;
+  const tail = digits.slice(-10);
+  if (/^0+$/.test(tail) || /^0+$/.test(digits)) return true;
+  return false;
+}
+
+/** Strips trunk 0 after UK country code: +4407… → +447… */
+export function fixUkE164(e164: string): string {
+  const match = e164.match(/^\+44(0+)([1-9]\d*)$/);
+  if (match) return `+44${match[2]}`;
+  return e164;
+}
+
+export function isValidE164(value: string): boolean {
+  if (!E164_RE.test(value)) return false;
+  return !isObviouslyInvalid(value.slice(1));
+}
+
+function phoneDigitsToE164(digits: string): string | null {
+  if (isObviouslyInvalid(digits)) return null;
+
+  let candidate: string | null = null;
+
+  if (digits.startsWith('00')) {
+    candidate = `+${digits.slice(2)}`;
+  } else if (digits.startsWith('44')) {
+    const national = digits.slice(2).replace(/^0+/, '');
+    candidate = `+44${national}`;
+  } else if (digits.startsWith('0') && digits.length >= 10) {
+    candidate = `+44${digits.slice(1)}`;
+  } else if (digits.length === 10 && digits.startsWith('7')) {
+    candidate = `+44${digits}`;
+  } else if (digits.length >= 8 && digits.length <= 15) {
+    candidate = `+${digits}`;
+  }
+
+  if (!candidate) return null;
+  candidate = fixUkE164(candidate);
+  return isValidE164(candidate) ? candidate : null;
+}
+
+/** Normalizes email/phone for storage, deduplication, and Twilio E.164. */
 export function normalizeContact(raw: string): { type: ContactType; value: string } | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
@@ -11,21 +59,23 @@ export function normalizeContact(raw: string): { type: ContactType; value: strin
     return { type: 'email', value: email };
   }
 
-  const digits = trimmed.replace(/\D/g, '');
-  if (digits.length < 7) return null;
   if (!/^\+?[0-9\s().-]{7,}$/.test(trimmed)) return null;
 
-  let value: string;
-  if (trimmed.startsWith('+')) {
-    value = `+${digits}`;
-  } else if (digits.startsWith('00')) {
-    value = `+${digits.slice(2)}`;
-  } else if (digits.startsWith('44') && digits.length >= 11) {
-    value = `+${digits}`;
-  } else if (digits.startsWith('0') && digits.length >= 10) {
-    value = `+44${digits.slice(1)}`;
-  } else {
-    value = digits;
-  }
-  return { type: 'phone', value };
+  const digits = digitsOnly(trimmed);
+  const e164 = trimmed.startsWith('+')
+    ? phoneDigitsToE164(digits) ?? (() => {
+        const candidate = fixUkE164(`+${digits}`);
+        return isValidE164(candidate) ? candidate : null;
+      })()
+    : phoneDigitsToE164(digits);
+
+  if (!e164) return null;
+  return { type: 'phone', value: e164 };
+}
+
+/** Resolves a stored or raw phone string to Twilio-ready E.164, or null. */
+export function phoneForTwilio(raw: string): string | null {
+  const parsed = normalizeContact(raw);
+  if (!parsed || parsed.type !== 'phone') return null;
+  return parsed.value;
 }
