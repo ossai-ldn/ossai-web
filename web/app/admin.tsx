@@ -17,6 +17,7 @@ import {
 } from '../lib/accessSession';
 import { backfillSignupsClient } from '../lib/adminBackfill';
 import { adminRequest } from '../lib/callables';
+import { callableCode, callableMessage, isUnknownAdminAction } from '../lib/callableError';
 
 type SignupRow = {
   id: string;
@@ -125,37 +126,46 @@ export default function AdminScreen() {
     return base;
   };
 
+  const runBackfillSignups = async () => {
+    const s = getAdminSecret();
+    if (!s) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      let result: Record<string, unknown>;
+      try {
+        result = await adminRequest<Record<string, unknown>>(s, 'backfillSignups');
+      } catch (e) {
+        if (callableCode(e) === 'functions/permission-denied') {
+          throw e;
+        }
+        result = await backfillSignupsClient(s);
+      }
+      setMessage(formatBackfillMessage(result));
+      await refreshAll(s);
+    } catch (e) {
+      setMessage(callableMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const runAction = async (action: string, payload: Record<string, unknown> = {}) => {
     const s = getAdminSecret();
     if (!s) return;
     setLoading(true);
     setMessage('');
     try {
-      let result: Record<string, unknown> | undefined;
-      try {
-        result = await adminRequest<Record<string, unknown>>(s, action, payload);
-      } catch (e) {
-        const raw = e instanceof Error ? e.message : 'Action failed';
-        if (action === 'backfillSignups' && raw.includes('Unknown action')) {
-          result = await backfillSignupsClient(s);
-        } else {
-          throw e;
-        }
-      }
-      if (action === 'backfillSignups' && result) {
-        setMessage(formatBackfillMessage(result));
-      } else {
-        setMessage(`Done: ${action}`);
-      }
+      await adminRequest(s, action, payload);
+      setMessage(`Done: ${action}`);
       await refreshAll(s);
     } catch (e) {
-      const raw = e instanceof Error ? e.message : 'Action failed';
-      if (raw.includes('Unknown action')) {
+      if (isUnknownAdminAction(e, action)) {
         setMessage(
           'Admin backend is out of date. Deploy latest functions: firebase deploy --only firestore:rules,firestore:indexes,functions',
         );
       } else {
-        setMessage(raw);
+        setMessage(callableMessage(e));
       }
     } finally {
       setLoading(false);
@@ -272,7 +282,7 @@ export default function AdminScreen() {
         <Text style={styles.hint}>Shop is {shopLive ? 'LIVE' : 'OFFLINE'}</Text>
 
         <Text style={styles.section}>SIGNUPS</Text>
-        <TouchableOpacity style={styles.btn} onPress={() => runAction('backfillSignups')}>
+        <TouchableOpacity style={styles.btn} onPress={runBackfillSignups}>
           <Text style={styles.btnText}>DEDUPE & BACKFILL DISCOUNTS</Text>
         </TouchableOpacity>
 
