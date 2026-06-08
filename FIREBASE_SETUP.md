@@ -148,7 +148,7 @@ firebase deploy --only firestore:rules,firestore:indexes,functions
 
 If signup shows **Retry / internal**, `registerSignup` is usually **not deployed** (the site falls back to Firestore + `getMyDiscount` dedupe until you run `firebase deploy --only functions`). Deploy **both** `functions` and `firestore:rules` together.
 
-If admin shows **Unknown action: backfillSignups** (or similar), the live `adminApi` function is an **older build**. From the repo root:
+If admin shows **Unknown action: backfillSignups** (or similar), the live `adminApi` function is an **older build**. The admin UI will run a **partial** client-side backfill (assign missing discount codes) automatically, but duplicate removal and canonical-id migration still require a functions deploy. From the repo root:
 
 ```bash
 cd functions && npm ci && npm run build && cd ..

@@ -15,6 +15,7 @@ import {
   getAdminSecret,
   setAdminSecret,
 } from '../lib/accessSession';
+import { backfillSignupsClient } from '../lib/adminBackfill';
 import { adminRequest } from '../lib/callables';
 
 type SignupRow = {
@@ -116,17 +117,33 @@ export default function AdminScreen() {
     }
   };
 
+  const formatBackfillMessage = (result: Record<string, unknown>) => {
+    const base = `Backfill: ${result.merged ?? 0} dupes removed, ${result.migrated ?? 0} migrated to canonical ids, ${result.codesAssigned ?? 0} codes assigned.`;
+    if (result.partial && Number(result.dupesRemaining ?? 0) > 0) {
+      return `${base} ${result.dupesRemaining} duplicate rows remain — deploy functions and run again for full dedupe.`;
+    }
+    return base;
+  };
+
   const runAction = async (action: string, payload: Record<string, unknown> = {}) => {
     const s = getAdminSecret();
     if (!s) return;
     setLoading(true);
     setMessage('');
     try {
-      const result = await adminRequest<Record<string, unknown>>(s, action, payload);
+      let result: Record<string, unknown> | undefined;
+      try {
+        result = await adminRequest<Record<string, unknown>>(s, action, payload);
+      } catch (e) {
+        const raw = e instanceof Error ? e.message : 'Action failed';
+        if (action === 'backfillSignups' && raw.includes('Unknown action')) {
+          result = await backfillSignupsClient(s);
+        } else {
+          throw e;
+        }
+      }
       if (action === 'backfillSignups' && result) {
-        setMessage(
-          `Backfill: ${result.merged ?? 0} dupes removed, ${result.migrated ?? 0} migrated to canonical ids, ${result.codesAssigned ?? 0} codes assigned.`,
-        );
+        setMessage(formatBackfillMessage(result));
       } else {
         setMessage(`Done: ${action}`);
       }
