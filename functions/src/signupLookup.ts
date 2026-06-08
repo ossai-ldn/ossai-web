@@ -1,9 +1,15 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { normalizeContact } from './contact';
+import { signupDocId } from './signupId';
 
 /** Finds the canonical signup for a normalized contact (handles legacy casing). */
 export async function findSignupByContact(contactValue: string) {
   const db = getFirestore();
+  const direct = await db.collection('signups').doc(signupDocId(contactValue)).get();
+  if (direct.exists) {
+    return direct;
+  }
+
   const q = await db
     .collection('signups')
     .where('contact', '==', contactValue)

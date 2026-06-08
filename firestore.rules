@@ -4,9 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /signups/{id} {
-      // Prefer registerSignup callable (deduped). Direct create allowed as fallback.
-      allow create: if isValidSignup(request.resource.data);
-      allow read, update, delete: if false;
+      // Created only via registerSignup Cloud Function (Admin SDK).
+      allow create, read, update, delete: if false;
     }
 
     match /mail/{id} {
@@ -26,17 +25,4 @@ service cloud.firestore {
       allow read, write: if false;
     }
   }
-}
-
-function isValidSignup(data) {
-  return data.keys().hasOnly(['contact', 'type', 'source', 'userAgent', 'createdAt'])
-    && data.contact is string
-    && data.contact.size() > 3
-    && data.contact.size() < 200
-    && data.type in ['email', 'phone']
-    && data.source is string
-    && data.source.size() < 100
-    && data.userAgent is string
-    && data.userAgent.size() < 1000
-    && data.createdAt == request.time;
 }

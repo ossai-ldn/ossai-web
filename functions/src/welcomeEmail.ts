@@ -1,5 +1,7 @@
 export interface WelcomeEmailOptions {
   siteUrl: string;
+  /** Magic link that links this email to the browser for shop/discount access. */
+  welcomeLink?: string;
   discountCode: string;
   discountPercent: number;
   instagramUrl?: string;
@@ -18,6 +20,7 @@ const DEFAULT_CONTACT = 'ossai@ossai.co.uk';
 export function renderWelcomeEmailText(options: WelcomeEmailOptions): string {
   const {
     siteUrl,
+    welcomeLink,
     discountCode,
     discountPercent,
     instagramUrl = 'https://instagram.com',
@@ -25,6 +28,10 @@ export function renderWelcomeEmailText(options: WelcomeEmailOptions): string {
     contactEmail = DEFAULT_CONTACT,
     unsubscribeEmail = DEFAULT_CONTACT,
   } = options;
+
+  const accessLine = welcomeLink
+    ? `Open your private link (links this device to your discount):\n${welcomeLink}\n`
+    : '';
 
   return `OSSAI
 
@@ -35,7 +42,7 @@ Your private discount has been reserved for our next exhibition.
 Your code: ${discountCode}
 ${discountPercent}% off at checkout when the shop is live.
 
-When the exhibition opens, visit ${siteUrl} and enter the drop password to view the collection.
+${accessLine}When the exhibition opens, visit ${siteUrl} and enter the drop password to view the collection.
 
 Visit the site: ${siteUrl}
 Instagram: ${instagramUrl}
@@ -57,6 +64,7 @@ To stop marketing emails, reply to this message or email ${unsubscribeEmail}?sub
 export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
   const {
     siteUrl,
+    welcomeLink = siteUrl,
     discountCode,
     discountPercent,
     instagramUrl = 'https://instagram.com',
@@ -108,8 +116,9 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
                     <p style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${muted};margin:0 0 12px 0;">Your discount code</p>
                     <p style="font-size:22px;letter-spacing:3px;color:${text};margin:0 0 8px 0;font-weight:600;">${discountCode}</p>
                     <p style="font-size:14px;line-height:1.6;color:${muted};margin:0 0 20px 0;">${discountPercent}% off at checkout when the shop is live.</p>
-                    <p style="font-size:13px;line-height:1.6;color:${muted};margin:0 0 20px 0;">Visit <a href="${siteUrl}" style="color:${text};">${siteUrl}</a> and enter the drop password to view the collection.</p>
-                    <a href="${siteUrl}" target="_blank" style="display:inline-block;border:1px solid ${text};color:${text};text-decoration:none;padding:12px 28px;font-size:12px;letter-spacing:2px;">Visit Ossai</a>
+                    <p style="font-size:13px;line-height:1.6;color:${muted};margin:0 0 16px 0;">Tap below to link this email to your browser and load your discount at the shop.</p>
+                    <a href="${welcomeLink}" target="_blank" style="display:inline-block;border:1px solid ${text};color:${text};text-decoration:none;padding:12px 28px;font-size:12px;letter-spacing:2px;margin-bottom:16px;">Open your private access</a>
+                    <p style="font-size:12px;line-height:1.6;color:${muted};margin:0;">Then visit <a href="${siteUrl}" style="color:${text};">${siteUrl}</a> and enter the drop password to view the collection.</p>
                   </td>
                 </tr>
               </table>

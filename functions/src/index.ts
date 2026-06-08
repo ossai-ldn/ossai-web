@@ -10,14 +10,23 @@ import {
   getSiteStatus,
   registerSignup,
   verifySitePassword,
+  verifyWelcomeLink,
 } from './callables';
 import { ensureSignupDiscount } from './signupDiscount';
 import { phoneForTwilio } from './contact';
+import { buildWelcomeLink, createLinkToken } from './signupId';
 import { renderWelcomeEmail, renderWelcomeEmailText } from './welcomeEmail';
 
 initializeApp();
 
-export { verifySitePassword, getSiteStatus, getMyDiscount, registerSignup, adminApi };
+export {
+  verifySitePassword,
+  getSiteStatus,
+  getMyDiscount,
+  registerSignup,
+  verifyWelcomeLink,
+  adminApi,
+};
 
 const TWILIO_ACCOUNT_SID = defineSecret('TWILIO_ACCOUNT_SID');
 const TWILIO_AUTH_TOKEN = defineSecret('TWILIO_AUTH_TOKEN');
@@ -63,9 +72,17 @@ export const sendWelcome = onDocumentCreated(
     const { discountCode, discountPercent } = await ensureSignupDiscount(signupId);
     const siteUrl = SITE_URL.value();
 
+    let linkToken = typeof existing?.linkToken === 'string' ? existing.linkToken.trim() : '';
+    if (!linkToken) {
+      linkToken = createLinkToken();
+      await db.collection('signups').doc(signupId).update({ linkToken });
+    }
+    const welcomeLink = buildWelcomeLink(siteUrl, signupId, linkToken);
+
     if (data.type === 'email') {
       const emailOpts = {
         siteUrl,
+        welcomeLink,
         discountCode,
         discountPercent,
         companyAddress: EMAIL_COMPANY_ADDRESS.value(),
@@ -112,7 +129,7 @@ export const sendWelcome = onDocumentCreated(
 
         await client.messages.create({
           to,
-          body: `Welcome to Ossai. Your code: ${discountCode} (${discountPercent}% off). Visit ${siteUrl}`,
+          body: `Welcome to Ossai. Your code: ${discountCode} (${discountPercent}% off). Open your private link: ${welcomeLink}`,
           ...senderOpts,
         });
         await db.collection('signups').doc(signupId).update({ welcomeSent: true });

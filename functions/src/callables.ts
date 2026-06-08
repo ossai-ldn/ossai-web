@@ -5,6 +5,8 @@ import { normalizeContact } from './contact';
 import { DEFAULT_DISCOUNT_PERCENT } from './discount';
 import { productPayloadFromRequest, slugify } from './productUtils';
 import { findSignupByContact } from './signupLookup';
+import { ensureCanonicalSignupDoc } from './signupMigrate';
+import { createLinkToken, signupDocId } from './signupId';
 import { assignUniqueDiscount, ensureSignupDiscount } from './signupDiscount';
 import { getAccessConfig, setAccessConfig } from './siteConfig';
 
@@ -19,8 +21,11 @@ function assertAdmin(secret: string | undefined) {
   }
 }
 
-function discountResponse(doc: FirebaseFirestore.QueryDocumentSnapshot) {
+function discountResponse(doc: FirebaseFirestore.DocumentSnapshot) {
   const d = doc.data();
+  if (!d) {
+    throw new HttpsError('not-found', 'Signup not found.');
+  }
   const code = typeof d.discountCode === 'string' ? d.discountCode.trim() : '';
   return {
     discountCode: code,
@@ -52,12 +57,26 @@ export const registerSignup = onCall({ region: REGION }, async (request) => {
       ? request.data.userAgent.trim().slice(0, 1000)
       : '';
 
-  const existing = await findSignupByContact(parsed.value);
-  if (existing) {
-    await existing.ref.update({ contact: parsed.value, type: parsed.type });
-    const { discountCode, discountPercent } = await ensureSignupDiscount(existing.id);
+  await ensureCanonicalSignupDoc(parsed.value, parsed.type);
+  const docId = signupDocId(parsed.value);
+  const ref = db.collection('signups').doc(docId);
+  const snap = await ref.get();
+
+  if (snap.exists) {
+    const data = snap.data()!;
+    const linkToken =
+      typeof data.linkToken === 'string' && data.linkToken.trim()
+        ? data.linkToken.trim()
+        : createLinkToken();
+    await ref.update({
+      contact: parsed.value,
+      type: parsed.type,
+      linkToken,
+      lastSeenAt: FieldValue.serverTimestamp(),
+    });
+    const { discountCode, discountPercent } = await ensureSignupDiscount(docId);
     return {
-      signupId: existing.id,
+      signupId: docId,
       existing: true as const,
       discountCode,
       discountPercent,
@@ -65,22 +84,54 @@ export const registerSignup = onCall({ region: REGION }, async (request) => {
     };
   }
 
-  const ref = await db.collection('signups').add({
+  const linkToken = createLinkToken();
+  await ref.set({
     contact: parsed.value,
     type: parsed.type,
     source,
     userAgent,
+    linkToken,
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  const { discountCode, discountPercent } = await assignUniqueDiscount(ref.id);
+  const { discountCode, discountPercent } = await assignUniqueDiscount(docId);
 
   return {
-    signupId: ref.id,
+    signupId: docId,
     existing: false as const,
     discountCode,
     discountPercent,
     contact: parsed.value,
+  };
+});
+
+/** Verifies email/SMS magic link and returns discount for browser linking. */
+export const verifyWelcomeLink = onCall({ region: REGION }, async (request) => {
+  const db = getFirestore();
+  const signupId =
+    typeof request.data?.signupId === 'string' ? request.data.signupId.trim() : '';
+  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+
+  if (!signupId || !token || token.length < 16) {
+    throw new HttpsError('invalid-argument', 'Invalid welcome link.');
+  }
+
+  const snap = await db.collection('signups').doc(signupId).get();
+  if (!snap.exists) {
+    throw new HttpsError('not-found', 'Signup not found.');
+  }
+
+  const stored = String(snap.data()?.linkToken ?? '').trim();
+  if (!stored || stored !== token) {
+    throw new HttpsError('permission-denied', 'Invalid or expired welcome link.');
+  }
+
+  const { discountCode, discountPercent } = await ensureSignupDiscount(signupId);
+  return {
+    signupId,
+    discountCode,
+    discountPercent,
+    contact: String(snap.data()?.contact ?? ''),
   };
 });
 
@@ -144,7 +195,12 @@ export const getMyDiscount = onCall({ region: REGION }, async (request) => {
     throw new HttpsError('not-found', 'No signup found for this contact.');
   }
 
-  const code = String(doc.data().discountCode ?? '').trim();
+  const docData = doc.data();
+  if (!docData) {
+    throw new HttpsError('not-found', 'No signup found for this contact.');
+  }
+
+  const code = String(docData.discountCode ?? '').trim();
   if (!code) {
     const assigned = await ensureSignupDiscount(doc.id);
     return { ...assigned, contact: parsed.value, signupId: doc.id };
@@ -197,6 +253,7 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
       let merged = 0;
       let codesAssigned = 0;
       let phonesFixed = 0;
+      let migrated = 0;
 
       for (const [, docs] of byContact) {
         docs.sort((a, b) => {
@@ -211,25 +268,37 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
 
         const keeper = docs[0];
         const parsed = normalizeContact(String(keeper.data().contact ?? ''));
-        if (parsed) {
-          const prev = String(keeper.data().contact ?? '');
-          if (parsed.type === 'phone' && prev !== parsed.value) phonesFixed++;
-          await keeper.ref.update({ contact: parsed.value, type: parsed.type });
-        }
+        if (!parsed) continue;
+
+        const prev = String(keeper.data().contact ?? '');
+        if (parsed.type === 'phone' && prev !== parsed.value) phonesFixed++;
+        await keeper.ref.update({ contact: parsed.value, type: parsed.type });
 
         for (let i = 1; i < docs.length; i++) {
           await docs[i].ref.delete();
           merged++;
         }
 
-        const code = String(keeper.data().discountCode ?? '').trim();
+        const { migrated: didMigrate, ref: canonicalRef } = await ensureCanonicalSignupDoc(
+          parsed.value,
+          parsed.type,
+        );
+        if (didMigrate) migrated++;
+
+        const canonicalSnap = await canonicalRef.get();
+        const data = canonicalSnap.data() ?? {};
+        if (!data.linkToken) {
+          await canonicalRef.update({ linkToken: createLinkToken() });
+        }
+
+        const code = String(data.discountCode ?? '').trim();
         if (!code) {
-          await ensureSignupDiscount(keeper.id);
+          await ensureSignupDiscount(canonicalRef.id);
           codesAssigned++;
         }
       }
 
-      return { ok: true, merged, codesAssigned, phonesFixed, contacts: byContact.size };
+      return { ok: true, merged, codesAssigned, phonesFixed, migrated, contacts: byContact.size };
     }
     case 'listSignups': {
       const snap = await db.collection('signups').orderBy('createdAt', 'desc').limit(100).get();

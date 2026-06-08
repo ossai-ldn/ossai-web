@@ -37,6 +37,15 @@ export async function registerSignup(params: {
   return result.data;
 }
 
+export async function verifyWelcomeLink(params: { signupId: string; token: string }) {
+  const fn = httpsCallable<
+    { signupId: string; token: string },
+    { signupId: string; discountCode: string; discountPercent: number; contact: string }
+  >(functions, 'verifyWelcomeLink');
+  const result = await fn(params);
+  return result.data;
+}
+
 export async function fetchMyDiscount(params: { signupId?: string; contact?: string }) {
   const fn = httpsCallable<
     { signupId?: string; contact?: string },

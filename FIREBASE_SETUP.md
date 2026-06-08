@@ -144,11 +144,11 @@ cd ..
 firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
 
-**Required functions:** `registerSignup`, `sendWelcome`, `getMyDiscount`, `verifySitePassword`, `getSiteStatus`, `adminApi`. If signup shows **Retry** and the browser console reports `functions/not-found` for `registerSignup`, redeploy functions (the site can fall back to direct Firestore signup once rules allow `create`, but dedupe requires `registerSignup`).
+**Required functions:** `registerSignup`, `verifyWelcomeLink`, `sendWelcome`, `getMyDiscount`, `verifySitePassword`, `getSiteStatus`, `adminApi`. Signup requires `registerSignup` deployed — there is no client-side fallback.
 
 New callables: `registerSignup`, `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
 
-Signups are created via **`registerSignup`** (deduped by normalized email/phone). In `/admin`, run **DEDUPE & BACKFILL DISCOUNTS** once to merge duplicate rows and assign missing codes.
+Signups are created **only** via **`registerSignup`** (one doc per normalized email/phone, deterministic id). Direct Firestore `signups` writes are blocked. Welcome emails include a magic link (`/welcome?sid=…&t=…`) that links the browser to the signup for shop discount access. In `/admin`, run **DEDUPE & BACKFILL DISCOUNTS** once to merge legacy duplicates and migrate to canonical ids.
 
 Set the **admin secret** (for `/admin` on the site):
 
@@ -182,4 +182,4 @@ Default site password until you change it in admin: **`OSSAI10`**.
   identifiers), secured by the rules above — safe to ship in the static bundle.
   Override via `EXPO_PUBLIC_FIREBASE_*` env vars if desired.
 - A captcha (e.g., Cloudflare Turnstile) is intentionally deferred; signups are
-  created only through the `registerSignup` callable (not direct Firestore writes).
+  created only through the `registerSignup` callable (Firestore `signups` create is denied).

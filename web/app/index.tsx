@@ -80,11 +80,19 @@ export default function Index() {
                         : Platform.OS,
             });
             setStoredSignupId(result.signupId);
-            setDiscountPreview(
-                result.discountCode
-                    ? `${result.discountCode} · ${result.discountPercent}% off`
-                    : 'Signed up — check your email for your discount code.',
-            );
+            if (result.existing) {
+                setDiscountPreview(
+                    result.discountCode
+                        ? `Already registered — ${result.discountCode} · ${result.discountPercent}% off`
+                        : 'Already registered — check your email for your code.',
+                );
+            } else {
+                setDiscountPreview(
+                    result.discountCode
+                        ? `${result.discountCode} · ${result.discountPercent}% off`
+                        : 'Signed up — check your email for your private link.',
+                );
+            }
 
             setStatus('success');
             setEmail('');
@@ -196,7 +204,13 @@ export default function Index() {
                                 <ActivityIndicator color={getStatusColor()} />
                             ) : (
                                 <Text style={[styles.textButtonLabel, { color: getStatusColor() }]}>
-                                    {status === 'success' ? 'Sent' : status === 'error' ? 'Retry' : 'Enter'}
+                                    {status === 'success'
+                                        ? discountPreview.startsWith('Already registered')
+                                            ? 'Welcome back'
+                                            : 'Sent'
+                                        : status === 'error'
+                                          ? 'Retry'
+                                          : 'Enter'}
                                 </Text>
                             )}
                         </TouchableOpacity>
