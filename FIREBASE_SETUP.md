@@ -96,6 +96,8 @@ cd ..
 firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
 
+**Required functions:** `registerSignup`, `sendWelcome`, `getMyDiscount`, `verifySitePassword`, `getSiteStatus`, `adminApi`. If signup shows **Retry** and the browser console reports `functions/not-found` for `registerSignup`, redeploy functions (the site can fall back to direct Firestore signup once rules allow `create`, but dedupe requires `registerSignup`).
+
 New callables: `registerSignup`, `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
 
 Signups are created via **`registerSignup`** (deduped by normalized email/phone). In `/admin`, run **DEDUPE & BACKFILL DISCOUNTS** once to merge duplicate rows and assign missing codes.

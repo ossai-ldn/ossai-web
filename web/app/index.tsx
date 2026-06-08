@@ -15,7 +15,7 @@ import {
 import PasswordGateControls from '../components/PasswordGateControls';
 import { setStoredSignupId } from '../lib/accessSession';
 import { classifyContact } from '../lib/classifyContact';
-import { registerSignup } from '../lib/callables';
+import { signupErrorMessage, submitSignup } from '../lib/signup';
 
 const HEADER_HEIGHT = 110;
 const ERROR_RESET_DELAY_MS = 2000;
@@ -27,6 +27,7 @@ export default function Index() {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<Status>('idle');
     const [discountPreview, setDiscountPreview] = useState('');
+    const [errorHint, setErrorHint] = useState('');
     const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
     const clearTimers = () => {
         timersRef.current.forEach(clearTimeout);
@@ -57,16 +58,20 @@ export default function Index() {
         // Accept either an email address or a phone number in the single field.
         const contact = classifyContact(email);
         if (!contact) {
+            setErrorHint('Enter a valid email or UK mobile (07… or +44…).');
             setStatus('error');
-            scheduleTimer(() => setStatus('idle'), ERROR_RESET_DELAY_MS);
+            scheduleTimer(() => {
+                setStatus('idle');
+                setErrorHint('');
+            }, ERROR_RESET_DELAY_MS);
             return;
         }
 
         setStatus('loading');
+        setErrorHint('');
 
         try {
-            // Send raw input — server normalizes to E.164 (single source of truth).
-            const result = await registerSignup({
+            const result = await submitSignup({
                 contact: email.trim(),
                 source: 'web-landing',
                 userAgent:
@@ -78,7 +83,7 @@ export default function Index() {
             setDiscountPreview(
                 result.discountCode
                     ? `${result.discountCode} · ${result.discountPercent}% off`
-                    : '',
+                    : 'Signed up — check your email for your discount code.',
             );
 
             setStatus('success');
@@ -89,8 +94,12 @@ export default function Index() {
             }, SUCCESS_RESET_DELAY_MS);
         } catch (err) {
             console.error('Signup failed', err);
+            setErrorHint(signupErrorMessage(err));
             setStatus('error');
-            scheduleTimer(() => setStatus('idle'), ERROR_RESET_DELAY_MS);
+            scheduleTimer(() => {
+                setStatus('idle');
+                setErrorHint('');
+            }, ERROR_RESET_DELAY_MS);
         }
     };
 
@@ -193,6 +202,9 @@ export default function Index() {
                         </TouchableOpacity>
                         {status === 'success' && discountPreview ? (
                             <Text style={styles.discountHint}>{discountPreview}</Text>
+                        ) : null}
+                        {status === 'error' && errorHint ? (
+                            <Text style={styles.errorHint}>{errorHint}</Text>
                         ) : null}
                     </View>
                 </View>
@@ -320,6 +332,13 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
         textAlign: 'center',
         marginTop: 8,
+    },
+    errorHint: {
+        color: '#ff918b',
+        fontSize: 12,
+        textAlign: 'center',
+        marginTop: 8,
+        paddingHorizontal: 8,
     },
 
     formContainer: {
