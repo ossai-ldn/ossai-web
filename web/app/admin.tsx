@@ -132,7 +132,14 @@ export default function AdminScreen() {
       }
       await refreshAll(s);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Action failed');
+      const raw = e instanceof Error ? e.message : 'Action failed';
+      if (raw.includes('Unknown action')) {
+        setMessage(
+          'Admin backend is out of date. Deploy latest functions: firebase deploy --only firestore:rules,firestore:indexes,functions',
+        );
+      } else {
+        setMessage(raw);
+      }
     } finally {
       setLoading(false);
     }

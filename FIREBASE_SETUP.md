@@ -148,6 +148,15 @@ firebase deploy --only firestore:rules,firestore:indexes,functions
 
 If signup shows **Retry / internal**, `registerSignup` is usually **not deployed** (the site falls back to Firestore + `getMyDiscount` dedupe until you run `firebase deploy --only functions`). Deploy **both** `functions` and `firestore:rules` together.
 
+If admin shows **Unknown action: backfillSignups** (or similar), the live `adminApi` function is an **older build**. From the repo root:
+
+```bash
+cd functions && npm ci && npm run build && cd ..
+firebase deploy --only firestore:rules,firestore:indexes,functions
+```
+
+Or use GitHub Actions → **Deploy Firebase (functions + rules)** (requires `FIREBASE_SERVICE_ACCOUNT` secret).
+
 New callables: `registerSignup`, `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
 
 Signups are created **only** via **`registerSignup`** (one doc per normalized email/phone, deterministic id). Direct Firestore `signups` writes are blocked. Welcome emails include a magic link (`/welcome?sid=…&t=…`) that links the browser to the signup for shop discount access. In `/admin`, run **DEDUPE & BACKFILL DISCOUNTS** once to merge legacy duplicates and migrate to canonical ids.
