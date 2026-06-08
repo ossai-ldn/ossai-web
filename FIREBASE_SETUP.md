@@ -58,10 +58,56 @@ Firebase console → Extensions → install **Trigger Email from Firestore**:
 - **Email documents collection:** `mail`
 - **SMTP connection URI:** your SendGrid SMTP, e.g.
   `smtps://apikey:<SENDGRID_API_KEY>@smtp.sendgrid.net:465`
-- **Default FROM address:** `ossai@ossai.co.uk` (must be on the
-  domain you authenticated in SendGrid)
+- **Default FROM address:** `ossai@ossai.co.uk` (must match **Domain Authentication** in SendGrid)
+- **SMTP URI format:** `smtps://apikey@smtp.sendgrid.net:465` with the API key in the **password** field (not embedded in the URI)
 
-The `ossai.co.uk` domain DNS (SPF/DKIM CNAMEs + DMARC) is already verified.
+### 2a. SendGrid domain authentication (critical for Apple Mail / iCloud)
+
+Without SPF + DKIM + DMARC, messages may send but land in **Junk** — especially in Apple Mail. Apple flags mail that claims to be from `ossai.co.uk` but is signed only as `sendgrid.net`.
+
+**In Twilio SendGrid → Settings → Sender Authentication → Authenticate Your Domain:**
+
+1. Enter **`ossai.co.uk`** (not a subdomain unless you use one for mail only).
+2. Add the DNS records SendGrid provides at your domain host (GoDaddy, Cloudflare, etc.):
+
+| Record | Purpose |
+|--------|---------|
+| **CNAME** (×2) | **DKIM** — cryptographic signature proving the message was not altered |
+| **TXT** or include in SPF | **SPF** — lists SendGrid as an allowed sender for your domain |
+| **TXT** `_dmarc.ossai.co.uk` | **DMARC** — tells receivers what to do if SPF/DKIM fail |
+
+**Minimum DMARC** (monitoring only, still helps reputation):
+
+```
+v=DMARC1; p=none; rua=mailto:ossai@ossai.co.uk
+```
+
+After DNS propagates (up to 48h), click **Verify** in SendGrid. Status must show **Verified** before expecting reliable inbox placement.
+
+**FROM address must match:** `ossai@ossai.co.uk` (or another address on the authenticated domain). Do not use `@gmail.com` or an unverified subdomain.
+
+### 2b. Branded link tracking (optional but recommended)
+
+Default SendGrid click tracking wraps links as `ct.sendgrid.net`, which spam filters (including Apple/Proofpoint) often distrust.
+
+**SendGrid → Settings → Sender Authentication → Link Branding:**
+
+- Create a subdomain such as **`links.ossai.co.uk`**
+- Add the CNAME SendGrid provides
+- Enable link branding so tracked links use your domain
+
+Until this is set up, consider **disabling click tracking** on transactional mail in SendGrid if junk placement persists.
+
+### 2c. Shared IP vs dedicated IP
+
+On free/lower SendGrid tiers, mail sends from **shared IPs**. If another sender on that IP spams, your mail can be affected temporarily.
+
+- **Budget fix:** Strong authentication (above) + plain-text multipart + compliant footer (address, unsubscribe) — already in the welcome template.
+- **Pro fix:** SendGrid plan with a **Dedicated IP** isolates your reputation.
+
+### 2d. Welcome email content (already in code)
+
+The `sendWelcome` function sends **HTML + plain text**, a neutral subject (`Welcome to Ossai`), physical address footer, and unsubscribe link — all of which Apple and CAN-SPAM checks look for. Avoid changing the subject to shouty patterns (`FREE`, `URGENT`, `$$$`).
 
 ## 3. Configure the Cloud Function secrets & params (SMS channel + config)
 
@@ -79,7 +125,9 @@ be overridden with environment variables at deploy time if needed:
 | `SMS_SENDER`   | `OSSAI`                   | Alphanumeric sender ID, a purchased number, or a Messaging Service SID (`MG…`). |
 | `EMAIL_FROM`   | `ossai@ossai.co.uk`       | Must match the Trigger Email extension's authenticated sender. |
 | `SITE_URL`     | `https://ossai.co.uk`     | Linked in the email button and SMS body. |
-| `EMAIL_SUBJECT`| `Ossai — Your private discount` | Welcome email subject. |
+| `EMAIL_SUBJECT`| `Welcome to Ossai` | Keep neutral — avoid spam-trigger words. |
+| `EMAIL_REPLY_TO` | `ossai@ossai.co.uk` | Reply-To header on welcome mail. |
+| `EMAIL_COMPANY_ADDRESS` | `London, United Kingdom` | Footer address (update to registered business address). |
 
 ### Twilio sender
 

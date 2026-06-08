@@ -3,26 +3,74 @@ export interface WelcomeEmailOptions {
   discountCode: string;
   discountPercent: number;
   instagramUrl?: string;
+  /** Shown in footer for CAN-SPAM / Apple Mail compliance. */
+  companyAddress?: string;
+  contactEmail?: string;
+  unsubscribeEmail?: string;
+}
+
+const DEFAULT_ADDRESS = 'London, United Kingdom';
+const DEFAULT_CONTACT = 'ossai@ossai.co.uk';
+
+/**
+ * Plain-text welcome email (multipart alternative improves inbox placement).
+ */
+export function renderWelcomeEmailText(options: WelcomeEmailOptions): string {
+  const {
+    siteUrl,
+    discountCode,
+    discountPercent,
+    instagramUrl = 'https://instagram.com',
+    companyAddress = DEFAULT_ADDRESS,
+    contactEmail = DEFAULT_CONTACT,
+    unsubscribeEmail = DEFAULT_CONTACT,
+  } = options;
+
+  return `OSSAI
+
+Thank you for joining the Ossai collective.
+
+Your private discount has been reserved for our next exhibition.
+
+Your code: ${discountCode}
+${discountPercent}% off at checkout when the shop is live.
+
+When the exhibition opens, visit ${siteUrl} and enter the drop password to view the collection.
+
+Visit the site: ${siteUrl}
+Instagram: ${instagramUrl}
+
+---
+You received this email because you signed up at ${siteUrl}.
+Ossai — ${companyAddress}
+Questions: ${contactEmail}
+To stop marketing emails, reply to this message or email ${unsubscribeEmail}?subject=Unsubscribe
+`;
 }
 
 /**
  * Renders the Ossai welcome email as email-safe HTML.
  *
- * Unlike the on-site landing page, email clients (Gmail, Outlook, Apple Mail)
- * do not run JavaScript and have poor/no support for flexbox, position:fixed,
- * backdrop-filter, viewport units, or web fonts. So this uses a centered
- * table layout with inline styles and web-safe serif fonts, and the allocation
- * code is shown as static text rather than a tap-to-copy control.
+ * Designed for deliverability: text-heavy layout, no spam triggers (no red
+ * text, no ALL CAPS subject patterns in body), physical address + unsubscribe.
  */
 export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
-  const { siteUrl, discountCode, discountPercent, instagramUrl = 'https://instagram.com' } =
-    options;
+  const {
+    siteUrl,
+    discountCode,
+    discountPercent,
+    instagramUrl = 'https://instagram.com',
+    companyAddress = DEFAULT_ADDRESS,
+    contactEmail = DEFAULT_CONTACT,
+    unsubscribeEmail = DEFAULT_CONTACT,
+  } = options;
 
   const bg = '#111112';
   const card = '#1c1c1e';
   const text = '#ffffff';
   const muted = '#8e8e93';
   const border = '#2c2c2e';
+  const unsubscribeHref = `mailto:${unsubscribeEmail}?subject=Unsubscribe`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -30,7 +78,7 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="x-apple-disable-message-reformatting" />
-  <title>Ossai &mdash; Collective</title>
+  <title>Ossai — Welcome</title>
 </head>
 <body style="margin:0;padding:0;background-color:${bg};color:${text};-webkit-text-size-adjust:100%;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};">
@@ -38,46 +86,48 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
       <td align="center" style="padding:24px;">
         <table role="presentation" width="440" cellpadding="0" cellspacing="0" border="0" style="width:440px;max-width:100%;">
 
-          <!-- Header -->
           <tr>
             <td align="center" style="padding:40px 0 28px 0;border-bottom:1px solid ${border};">
               <div style="font-family:Georgia,'Times New Roman',serif;font-size:34px;letter-spacing:8px;text-transform:uppercase;color:${text};line-height:1;">Ossai</div>
             </td>
           </tr>
 
-          <!-- Manifesto -->
           <tr>
-            <td align="center" style="padding:48px 16px;font-family:Arial,Helvetica,sans-serif;">
-              <div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:${muted};margin-bottom:24px;">The Philosophy</div>
-              <p style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:21px;line-height:1.5;color:${text};margin:0 0 28px 0;">&ldquo;A deliberate study in contemporary form, quiet utility, and enduring structure.&rdquo;</p>
-              <p style="font-size:14px;line-height:1.7;color:${muted};margin:0;">Ossai is built upon modern curation. We intentionally bridge the gap between architectural streetwear elements and meticulous garment tailoring. Each piece is constructed in limited quantities to respect creative longevity.</p>
+            <td style="padding:32px 16px 24px 16px;font-family:Arial,Helvetica,sans-serif;">
+              <p style="font-size:15px;line-height:1.7;color:${text};margin:0 0 16px 0;">Thank you for joining the Ossai collective.</p>
+              <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 16px 0;">Ossai is a deliberate study in contemporary form, quiet utility, and enduring structure. We release in limited quantities for each exhibition.</p>
+              <p style="font-size:14px;line-height:1.7;color:${muted};margin:0;">Your private discount has been reserved for our next drop. When the exhibition opens, you will use the code below at checkout.</p>
             </td>
           </tr>
 
-          <!-- Private Access card -->
           <tr>
-            <td style="padding:0 0 48px 0;">
+            <td style="padding:0 0 32px 0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${border};background-color:${card};">
                 <tr>
-                  <td align="center" style="padding:40px 24px;font-family:Arial,Helvetica,sans-serif;">
-                    <div style="font-size:13px;letter-spacing:5px;text-transform:uppercase;color:${text};font-weight:600;margin-bottom:16px;">Welcome to the Collective</div>
-                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 16px 0;">Your private discount has been reserved for our next exhibition.</p>
-                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 8px 0;">Code: <strong style="color:${text};letter-spacing:2px;">${discountCode}</strong></p>
-                    <p style="font-size:14px;line-height:1.7;color:${muted};margin:0 0 24px 0;"><strong style="color:${text};">${discountPercent}% off</strong> at checkout on Shopify.</p>
-                    <p style="font-size:12px;line-height:1.6;color:${muted};margin:0 0 24px 0;">When the exhibition opens, enter the drop password on ${siteUrl} to view the collection.</p>
-                    <a href="${siteUrl}" target="_blank" style="display:inline-block;border:1px solid ${text};color:${text};text-decoration:none;padding:15px 40px;font-size:12px;letter-spacing:3px;text-transform:uppercase;">Visit Ossai</a>
+                  <td style="padding:32px 24px;font-family:Arial,Helvetica,sans-serif;">
+                    <p style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${muted};margin:0 0 12px 0;">Your discount code</p>
+                    <p style="font-size:22px;letter-spacing:3px;color:${text};margin:0 0 8px 0;font-weight:600;">${discountCode}</p>
+                    <p style="font-size:14px;line-height:1.6;color:${muted};margin:0 0 20px 0;">${discountPercent}% off at checkout when the shop is live.</p>
+                    <p style="font-size:13px;line-height:1.6;color:${muted};margin:0 0 20px 0;">Visit <a href="${siteUrl}" style="color:${text};">${siteUrl}</a> and enter the drop password to view the collection.</p>
+                    <a href="${siteUrl}" target="_blank" style="display:inline-block;border:1px solid ${text};color:${text};text-decoration:none;padding:12px 28px;font-size:12px;letter-spacing:2px;">Visit Ossai</a>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
-            <td align="center" style="padding:0 0 40px 0;font-family:Arial,Helvetica,sans-serif;">
-              <div style="height:1px;width:40px;background-color:${border};margin:0 auto 20px auto;line-height:1px;font-size:0;">&nbsp;</div>
-              <a href="${instagramUrl}" target="_blank" style="color:${text};text-decoration:none;font-size:12px;letter-spacing:1px;font-weight:500;display:block;margin-bottom:14px;">@OSSAI.CO.UK</a>
-              <div style="font-size:11px;letter-spacing:2px;color:${muted};">LONDON &bull; EST. 2026</div>
+            <td align="center" style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;">
+              <a href="${instagramUrl}" target="_blank" style="color:${muted};text-decoration:none;font-size:12px;letter-spacing:1px;">Follow @ossai.co.uk</a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 16px 40px 16px;border-top:1px solid ${border};font-family:Arial,Helvetica,sans-serif;">
+              <p style="font-size:11px;line-height:1.6;color:${muted};margin:0 0 8px 0;text-align:center;">You received this email because you signed up at ${siteUrl}.</p>
+              <p style="font-size:11px;line-height:1.6;color:${muted};margin:0 0 8px 0;text-align:center;">Ossai — ${companyAddress}</p>
+              <p style="font-size:11px;line-height:1.6;color:${muted};margin:0 0 8px 0;text-align:center;">Contact: <a href="mailto:${contactEmail}" style="color:${muted};">${contactEmail}</a></p>
+              <p style="font-size:11px;line-height:1.6;color:${muted};margin:0;text-align:center;"><a href="${unsubscribeHref}" style="color:${muted};text-decoration:underline;">Unsubscribe</a> from future marketing emails.</p>
             </td>
           </tr>
 

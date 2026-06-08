@@ -13,7 +13,7 @@ import {
 } from './callables';
 import { ensureSignupDiscount } from './signupDiscount';
 import { phoneForTwilio } from './contact';
-import { renderWelcomeEmail } from './welcomeEmail';
+import { renderWelcomeEmail, renderWelcomeEmailText } from './welcomeEmail';
 
 initializeApp();
 
@@ -26,7 +26,11 @@ const SMS_SENDER = defineString('SMS_SENDER', { default: 'OSSAI' });
 const EMAIL_FROM = defineString('EMAIL_FROM', { default: 'ossai@ossai.co.uk' });
 const SITE_URL = defineString('SITE_URL', { default: 'https://ossai.co.uk' });
 const EMAIL_SUBJECT = defineString('EMAIL_SUBJECT', {
-  default: 'Ossai — Your private discount',
+  default: 'Welcome to Ossai',
+});
+const EMAIL_REPLY_TO = defineString('EMAIL_REPLY_TO', { default: 'ossai@ossai.co.uk' });
+const EMAIL_COMPANY_ADDRESS = defineString('EMAIL_COMPANY_ADDRESS', {
+  default: 'London, United Kingdom',
 });
 
 interface SignupDoc {
@@ -60,14 +64,24 @@ export const sendWelcome = onDocumentCreated(
     const siteUrl = SITE_URL.value();
 
     if (data.type === 'email') {
+      const emailOpts = {
+        siteUrl,
+        discountCode,
+        discountPercent,
+        companyAddress: EMAIL_COMPANY_ADDRESS.value(),
+        contactEmail: EMAIL_REPLY_TO.value(),
+        unsubscribeEmail: EMAIL_REPLY_TO.value(),
+      };
       await getFirestore()
         .collection('mail')
         .add({
           to: data.contact,
           from: EMAIL_FROM.value(),
+          replyTo: EMAIL_REPLY_TO.value(),
           message: {
             subject: EMAIL_SUBJECT.value(),
-            html: renderWelcomeEmail({ siteUrl, discountCode, discountPercent }),
+            html: renderWelcomeEmail(emailOpts),
+            text: renderWelcomeEmailText(emailOpts),
           },
         });
       await db.collection('signups').doc(signupId).update({ welcomeSent: true });
