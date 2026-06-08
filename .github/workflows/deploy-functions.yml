@@ -9,6 +9,7 @@ on:
       - 'functions/**'
       - 'firestore.rules'
       - 'firestore.indexes.json'
+      - 'storage.rules'
       - 'firebase.json'
       - '.github/workflows/deploy-functions.yml'
 
@@ -40,4 +41,4 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Deploy Firestore rules, indexes, and Cloud Functions
-        run: npx firebase-tools@13 deploy --only firestore:rules,firestore:indexes,functions --project ossai-82889 --non-interactive
+        run: npx firebase-tools@13 deploy --only firestore:rules,firestore:indexes,storage,functions --project ossai-82889 --non-interactive

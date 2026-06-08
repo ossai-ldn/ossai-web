@@ -6,6 +6,7 @@ export type Product = {
   imageFront: string;
   imageBack: string;
   imageUrl: string;
+  videoUrl: string;
   shopifyUrl: string;
   description: string;
   details: string;
@@ -17,6 +18,7 @@ export type Product = {
 export function mapProductDoc(id: string, d: Record<string, unknown>): Product {
   const imageFront = String(d.imageFront ?? d.imageUrl ?? '');
   const imageBack = String(d.imageBack ?? '');
+  const videoUrl = String(d.videoUrl ?? '');
   return {
     id,
     slug: String(d.slug ?? id),
@@ -25,6 +27,7 @@ export function mapProductDoc(id: string, d: Record<string, unknown>): Product {
     imageFront,
     imageBack,
     imageUrl: imageFront,
+    videoUrl,
     shopifyUrl: String(d.shopifyUrl ?? ''),
     description: String(d.description ?? ''),
     details: String(d.details ?? ''),

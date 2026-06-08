@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { ProductImageFlip } from '../../components/ProductImageFlip';
+import { ProductVideo } from '../../components/ProductVideo';
 import { SITE_HEADER_HEIGHT } from '../../components/SiteHeader';
 import { fetchSiteStatus } from '../../lib/callables';
 import { getCachedShopLive, isSiteAccessGranted, setCachedShopLive } from '../../lib/accessSession';
@@ -101,6 +102,10 @@ export default function ProductDetailScreen() {
             soldOut={product.soldOut}
           />
         </View>
+
+        {product.videoUrl ? (
+          <ProductVideo uri={product.videoUrl} style={{ marginBottom: 24, maxWidth: 480, alignSelf: 'center', width: '100%' }} />
+        ) : null}
 
         <Text style={styles.title}>{product.title.toUpperCase()}</Text>
         {product.priceDisplay ? <Text style={styles.price}>{product.priceDisplay}</Text> : null}

@@ -27,6 +27,9 @@ export function productPayloadFromRequest(
   const imageBack =
     typeof data.imageBack === 'string' ? data.imageBack.trim() : String(existing?.imageBack ?? '');
 
+  const videoUrl =
+    typeof data.videoUrl === 'string' ? data.videoUrl.trim() : String(existing?.videoUrl ?? '');
+
   const slug =
     typeof data.slug === 'string' && data.slug.trim()
       ? data.slug.trim().toLowerCase()
@@ -51,6 +54,7 @@ export function productPayloadFromRequest(
     imageFront,
     imageBack,
     imageUrl: imageFront,
+    videoUrl,
     description:
       typeof data.description === 'string' ? data.description.trim() : String(existing?.description ?? ''),
     details: typeof data.details === 'string' ? data.details.trim() : String(existing?.details ?? ''),

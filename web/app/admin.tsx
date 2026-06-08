@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
+import { MediaUploadField } from '../components/MediaUploadField';
 import {
   clearAdminSecret,
   getAdminSecret,
@@ -35,6 +36,7 @@ type ProductRow = {
   imageFront?: string;
   imageBack?: string;
   imageUrl?: string;
+  videoUrl?: string;
   shopifyUrl?: string;
   description?: string;
   details?: string;
@@ -50,6 +52,7 @@ const emptyDraft = {
   priceDisplay: '',
   imageFront: '',
   imageBack: '',
+  videoUrl: '',
   shopifyUrl: '',
   description: '',
   details: '',
@@ -180,6 +183,7 @@ export default function AdminScreen() {
       priceDisplay: p.priceDisplay ?? '',
       imageFront: String(p.imageFront ?? p.imageUrl ?? ''),
       imageBack: p.imageBack ?? '',
+      videoUrl: p.videoUrl ?? '',
       shopifyUrl: p.shopifyUrl ?? '',
       description: p.description ?? '',
       details: p.details ?? '',
@@ -200,6 +204,7 @@ export default function AdminScreen() {
       priceDisplay: draft.priceDisplay,
       imageFront: draft.imageFront,
       imageBack: draft.imageBack,
+      videoUrl: draft.videoUrl,
       shopifyUrl: draft.shopifyUrl,
       description: draft.description,
       details: draft.details,
@@ -297,8 +302,30 @@ export default function AdminScreen() {
             <TextInput style={styles.input} placeholder="Title" placeholderTextColor="#666" value={draft.title} onChangeText={(t) => setDraft({ ...draft, title: t })} />
             <TextInput style={styles.input} placeholder="URL slug (optional)" placeholderTextColor="#666" value={draft.slug} onChangeText={(t) => setDraft({ ...draft, slug: t })} autoCapitalize="none" />
             <TextInput style={styles.input} placeholder="Price display" placeholderTextColor="#666" value={draft.priceDisplay} onChangeText={(t) => setDraft({ ...draft, priceDisplay: t })} />
-            <TextInput style={styles.input} placeholder="Front image URL" placeholderTextColor="#666" value={draft.imageFront} onChangeText={(t) => setDraft({ ...draft, imageFront: t })} autoCapitalize="none" />
-            <TextInput style={styles.input} placeholder="Back image URL (hover)" placeholderTextColor="#666" value={draft.imageBack} onChangeText={(t) => setDraft({ ...draft, imageBack: t })} autoCapitalize="none" />
+            <MediaUploadField
+              label="FRONT IMAGE"
+              slot="front"
+              value={draft.imageFront}
+              onChange={(url) => setDraft({ ...draft, imageFront: url })}
+              productId={editingId}
+              onError={setMessage}
+            />
+            <MediaUploadField
+              label="BACK IMAGE (HOVER)"
+              slot="back"
+              value={draft.imageBack}
+              onChange={(url) => setDraft({ ...draft, imageBack: url })}
+              productId={editingId}
+              onError={setMessage}
+            />
+            <MediaUploadField
+              label="PRODUCT VIDEO (OPTIONAL)"
+              slot="video"
+              value={draft.videoUrl}
+              onChange={(url) => setDraft({ ...draft, videoUrl: url })}
+              productId={editingId}
+              onError={setMessage}
+            />
             <TextInput style={styles.input} placeholder="Shopify product URL" placeholderTextColor="#666" value={draft.shopifyUrl} onChangeText={(t) => setDraft({ ...draft, shopifyUrl: t })} autoCapitalize="none" />
             <TextInput style={styles.input} placeholder="Stock quantity (admin only)" placeholderTextColor="#666" value={draft.stockQty} onChangeText={(t) => setDraft({ ...draft, stockQty: t })} keyboardType="number-pad" />
             <TextInput style={[styles.input, styles.textArea]} placeholder="Description" placeholderTextColor="#666" value={draft.description} onChangeText={(t) => setDraft({ ...draft, description: t })} multiline />

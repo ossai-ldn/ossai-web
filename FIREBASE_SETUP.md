@@ -118,7 +118,12 @@ firebase functions:secrets:set TWILIO_AUTH_TOKEN
 ```
 
 Non-secret params have sensible defaults (see `functions/src/index.ts`) and can
-be overridden with environment variables at deploy time if needed:
+be overridden in `functions/.env.ossai-82889` (copy from `.env.ossai-82889.example`).
+
+**Do not** put `ADMIN_SECRET`, `TWILIO_ACCOUNT_SID`, or `TWILIO_AUTH_TOKEN` in the
+`.env` file — those are Firebase **secrets** only (`firebase functions:secrets:set`).
+Putting them in `.env` causes deploy errors: *Secret environment variable overlaps
+non secret environment variable*.
 
 | Param          | Default                   | Notes |
 |----------------|---------------------------|-------|
@@ -141,7 +146,7 @@ cd functions
 npm install
 npm run build
 cd ..
-firebase deploy --only firestore:rules,firestore:indexes,functions
+firebase deploy --only firestore:rules,firestore:indexes,storage,functions
 ```
 
 **Required functions:** `registerSignup`, `verifyWelcomeLink`, `sendWelcome`, `getMyDiscount`, `verifySitePassword`, `getSiteStatus`, `adminApi`.
@@ -168,7 +173,7 @@ npm run deploy:firebase
 
 ```bash
 cd functions && npm ci && npm run build && cd ..
-firebase deploy --only firestore:rules,firestore:indexes,functions --project ossai-82889
+firebase deploy --only firestore:rules,firestore:indexes,storage,functions --project ossai-82889
 ```
 
 Or use GitHub Actions → **Deploy Firebase (functions + rules)** (requires `FIREBASE_SERVICE_ACCOUNT` secret).
@@ -182,6 +187,27 @@ Set the **admin secret** (for `/admin` on the site):
 ```bash
 firebase functions:secrets:set ADMIN_SECRET
 # choose a long random string; enter it on https://ossai.co.uk/admin
+```
+
+### Product media upload (admin)
+
+Enable **Firebase Storage** in the console (usually auto-enabled on first storage deploy).
+
+In `/admin` → edit a product → **UPLOAD IMAGE FROM DEVICE** or **UPLOAD VIDEO FROM DEVICE**
+uploads to `products/` in Storage via signed URLs from `adminApi` (`getProductUploadUrl`).
+
+Deploy **storage rules + adminApi** after pulling this branch:
+
+```bash
+npm run deploy:firebase
+```
+
+If `adminApi` fails with an `ADMIN_SECRET` overlap error, remove secret keys from
+`functions/.env.ossai-82889`, then delete and redeploy adminApi:
+
+```bash
+firebase functions:delete adminApi --region europe-west2 --project ossai-82889
+firebase deploy --only functions:adminApi,storage --project ossai-82889
 ```
 
 `sendWelcome` now assigns a **unique discount code** (default **10% off**) per signup and includes it in the welcome email.

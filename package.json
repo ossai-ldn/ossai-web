@@ -2,7 +2,7 @@
   "name": "ossai-web",
   "private": true,
   "scripts": {
-    "deploy:firebase": "npm --prefix functions ci && npm --prefix functions run build && npx firebase-tools@13 deploy --only firestore:rules,firestore:indexes,functions --project ossai-82889 --non-interactive",
+    "deploy:firebase": "npm --prefix functions ci && npm --prefix functions run build && npx firebase-tools@13 deploy --only firestore:rules,firestore:indexes,storage,functions --project ossai-82889 --non-interactive",
     "deploy:web": "npm --prefix web ci && npm --prefix web run deploy"
   }
 }

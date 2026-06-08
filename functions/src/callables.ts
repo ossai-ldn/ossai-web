@@ -4,6 +4,7 @@ import { defineSecret } from 'firebase-functions/params';
 import { normalizeContact } from './contact';
 import { DEFAULT_DISCOUNT_PERCENT } from './discount';
 import { productPayloadFromRequest, slugify } from './productUtils';
+import { createProductUploadUrl } from './productUpload';
 import { findSignupByContact } from './signupLookup';
 import { ensureCanonicalSignupDoc } from './signupMigrate';
 import { createLinkToken, signupDocId } from './signupId';
@@ -391,6 +392,26 @@ export const adminApi = onCall({ region: REGION, secrets: [ADMIN_SECRET] }, asyn
         createdAt: new Date(),
       });
       return { productId: ref.id };
+    }
+    case 'getProductUploadUrl': {
+      const slot = typeof request.data?.slot === 'string' ? request.data.slot.trim() : '';
+      const contentType =
+        typeof request.data?.contentType === 'string' ? request.data.contentType.trim() : '';
+      const productId =
+        typeof request.data?.productId === 'string' ? request.data.productId.trim() : '';
+      const fileName =
+        typeof request.data?.fileName === 'string' ? request.data.fileName.trim() : '';
+      if (!slot || !contentType) {
+        throw new HttpsError('invalid-argument', 'slot and contentType required.');
+      }
+      try {
+        return await createProductUploadUrl({ slot, contentType, productId, fileName });
+      } catch (err) {
+        throw new HttpsError(
+          'invalid-argument',
+          err instanceof Error ? err.message : 'Invalid upload request.',
+        );
+      }
     }
     case 'deleteProduct': {
       const productId =
