@@ -37,72 +37,81 @@ function discountResponse(doc: FirebaseFirestore.DocumentSnapshot) {
 
 /** Creates or returns existing signup (deduped by normalized contact). */
 export const registerSignup = onCall({ region: REGION }, async (request) => {
-  const db = getFirestore();
-  const contactRaw =
-    typeof request.data?.contact === 'string' ? request.data.contact.trim() : '';
-  const parsed = normalizeContact(contactRaw);
-  if (!parsed) {
-    throw new HttpsError(
-      'invalid-argument',
-      'Enter a valid email or UK/international phone (e.g. 07… or +44 7…).',
-    );
-  }
+  try {
+    const db = getFirestore();
+    const contactRaw =
+      typeof request.data?.contact === 'string' ? request.data.contact.trim() : '';
+    const parsed = normalizeContact(contactRaw);
+    if (!parsed) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Enter a valid email or UK/international phone (e.g. 07… or +44 7…).',
+      );
+    }
 
-  const source =
-    typeof request.data?.source === 'string'
-      ? request.data.source.trim().slice(0, 100)
-      : 'web-landing';
-  const userAgent =
-    typeof request.data?.userAgent === 'string'
-      ? request.data.userAgent.trim().slice(0, 1000)
-      : '';
+    const source =
+      typeof request.data?.source === 'string'
+        ? request.data.source.trim().slice(0, 100)
+        : 'web-landing';
+    const userAgent =
+      typeof request.data?.userAgent === 'string'
+        ? request.data.userAgent.trim().slice(0, 1000)
+        : '';
 
-  await ensureCanonicalSignupDoc(parsed.value, parsed.type);
-  const docId = signupDocId(parsed.value);
-  const ref = db.collection('signups').doc(docId);
-  const snap = await ref.get();
+    await ensureCanonicalSignupDoc(parsed.value, parsed.type);
+    const docId = signupDocId(parsed.value);
+    const ref = db.collection('signups').doc(docId);
+    const snap = await ref.get();
 
-  if (snap.exists) {
-    const data = snap.data()!;
-    const linkToken =
-      typeof data.linkToken === 'string' && data.linkToken.trim()
-        ? data.linkToken.trim()
-        : createLinkToken();
-    await ref.update({
+    if (snap.exists) {
+      const data = snap.data()!;
+      const linkToken =
+        typeof data.linkToken === 'string' && data.linkToken.trim()
+          ? data.linkToken.trim()
+          : createLinkToken();
+      await ref.update({
+        contact: parsed.value,
+        type: parsed.type,
+        linkToken,
+        lastSeenAt: FieldValue.serverTimestamp(),
+      });
+      const { discountCode, discountPercent } = await ensureSignupDiscount(docId);
+      return {
+        signupId: docId,
+        existing: true as const,
+        discountCode,
+        discountPercent,
+        contact: parsed.value,
+      };
+    }
+
+    const linkToken = createLinkToken();
+    await ref.set({
       contact: parsed.value,
       type: parsed.type,
+      source,
+      userAgent,
       linkToken,
-      lastSeenAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
-    const { discountCode, discountPercent } = await ensureSignupDiscount(docId);
+
+    const { discountCode, discountPercent } = await assignUniqueDiscount(docId);
+
     return {
       signupId: docId,
-      existing: true as const,
+      existing: false as const,
       discountCode,
       discountPercent,
       contact: parsed.value,
     };
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    console.error('registerSignup failed', err);
+    throw new HttpsError(
+      'internal',
+      err instanceof Error ? err.message : 'Signup failed. Please try again.',
+    );
   }
-
-  const linkToken = createLinkToken();
-  await ref.set({
-    contact: parsed.value,
-    type: parsed.type,
-    source,
-    userAgent,
-    linkToken,
-    createdAt: FieldValue.serverTimestamp(),
-  });
-
-  const { discountCode, discountPercent } = await assignUniqueDiscount(docId);
-
-  return {
-    signupId: docId,
-    existing: false as const,
-    discountCode,
-    discountPercent,
-    contact: parsed.value,
-  };
 });
 
 /** Verifies email/SMS magic link and returns discount for browser linking. */

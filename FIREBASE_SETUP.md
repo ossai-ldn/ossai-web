@@ -144,7 +144,9 @@ cd ..
 firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
 
-**Required functions:** `registerSignup`, `verifyWelcomeLink`, `sendWelcome`, `getMyDiscount`, `verifySitePassword`, `getSiteStatus`, `adminApi`. Signup requires `registerSignup` deployed — there is no client-side fallback.
+**Required functions:** `registerSignup`, `verifyWelcomeLink`, `sendWelcome`, `getMyDiscount`, `verifySitePassword`, `getSiteStatus`, `adminApi`.
+
+If signup shows **Retry / internal**, `registerSignup` is usually **not deployed** (the site falls back to Firestore + `getMyDiscount` dedupe until you run `firebase deploy --only functions`). Deploy **both** `functions` and `firestore:rules` together.
 
 New callables: `registerSignup`, `verifySitePassword`, `getSiteStatus`, `getMyDiscount`, `adminApi`.
 

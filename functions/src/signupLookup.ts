@@ -10,14 +10,14 @@ export async function findSignupByContact(contactValue: string) {
     return direct;
   }
 
-  const q = await db
-    .collection('signups')
-    .where('contact', '==', contactValue)
-    .orderBy('createdAt', 'desc')
-    .limit(5)
-    .get();
+  const q = await db.collection('signups').where('contact', '==', contactValue).limit(10).get();
   if (!q.empty) {
-    return q.docs[0];
+    const sorted = [...q.docs].sort((a, b) => {
+      const aTime = a.data().createdAt?.toMillis?.() ?? 0;
+      const bTime = b.data().createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
+    return sorted[0];
   }
 
   // Legacy rows may have non-normalized email casing — scan recent signups.
