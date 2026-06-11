@@ -12,7 +12,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import OssaiLogo from '../components/OssaiLogo';
 import PasswordGateControls from '../components/PasswordGateControls';
 import SeoHead from '../components/SeoHead';
 import { setStoredSignupId } from '../lib/accessSession';
@@ -246,7 +245,11 @@ export default function Index() {
                         <PasswordGateControls navigateOnUnlock={false} />
                     </View>
                     <View style={styles.headerContent}>
-                        <OssaiLogo size="lg" preferText />
+                        <Image
+                            source={require('../assets/images/base_opt_white.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                     </View>
                 </SafeAreaView>
             </BlurView>
