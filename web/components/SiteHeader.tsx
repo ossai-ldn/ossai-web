@@ -1,6 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { Link } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import OssaiLogo from './OssaiLogo';
 import PasswordGateControls from './PasswordGateControls';
 
 const HEADER_HEIGHT = 110;
@@ -13,7 +14,7 @@ export default function SiteHeader() {
         <View style={styles.row}>
           <Link href="/" asChild>
             <TouchableOpacity style={styles.logoWrap} activeOpacity={0.8}>
-              <Text style={styles.logoText}>OSSAI</Text>
+              <OssaiLogo size="sm" preferText />
             </TouchableOpacity>
           </Link>
           <View style={styles.right}>
@@ -49,12 +50,6 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     paddingVertical: 4,
-  },
-  logoText: {
-    color: '#fff',
-    fontSize: 18,
-    letterSpacing: 6,
-    fontWeight: '600',
   },
   right: {
     alignItems: 'flex-end',

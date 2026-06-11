@@ -9,8 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
 import { MediaUploadField } from '../components/MediaUploadField';
+import OssaiLogo from '../components/OssaiLogo';
+import SeoHead from '../components/SeoHead';
+import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
+import { pages } from '../lib/seo';
 import {
   clearAdminSecret,
   getAdminSecret,
@@ -220,7 +223,14 @@ export default function AdminScreen() {
   if (!authed) {
     return (
       <View style={styles.container}>
+        <SeoHead
+          title={pages.admin.title}
+          description={pages.admin.description}
+          path="/admin"
+          noindex
+        />
         <View style={[styles.centered, { paddingTop: SITE_HEADER_HEIGHT }]}>
+          <OssaiLogo size="md" preferText style={{ marginBottom: 16 }} />
           <Text style={styles.title}>ADMIN</Text>
           <TextInput
             style={styles.input}
@@ -248,9 +258,16 @@ export default function AdminScreen() {
 
   return (
     <View style={styles.container}>
+      <SeoHead
+        title={pages.admin.title}
+        description={pages.admin.description}
+        path="/admin"
+        noindex
+      />
       <ScrollView
         contentContainerStyle={{ paddingTop: SITE_HEADER_HEIGHT + 16, padding: 16, paddingBottom: 48 }}
       >
+        <OssaiLogo size="sm" preferText style={{ marginBottom: 12 }} />
         <Text style={styles.title}>ADMIN</Text>
         {message ? <Text style={styles.msg}>{message}</Text> : null}
         {loading && <ActivityIndicator color="#fff" style={{ marginBottom: 12 }} />}

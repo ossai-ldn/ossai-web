@@ -1,8 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SeoHead from '../components/SeoHead';
 import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
 import { setStoredSignupId } from '../lib/accessSession';
+import { pages } from '../lib/seo';
 import { verifyWelcomeLink } from '../lib/callables';
 
 type State = 'loading' | 'ok' | 'error';
@@ -33,6 +35,12 @@ export default function WelcomeLinkScreen() {
 
   return (
     <View style={styles.container}>
+      <SeoHead
+        title={pages.welcome.title}
+        description={pages.welcome.description}
+        path="/welcome"
+        noindex
+      />
       <View style={[styles.centered, { paddingTop: SITE_HEADER_HEIGHT }]}>
         {state === 'loading' && (
           <>

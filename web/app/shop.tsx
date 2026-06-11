@@ -12,7 +12,9 @@ import {
   View,
 } from 'react-native';
 import ProductCard from '../components/ProductCard';
+import SeoHead from '../components/SeoHead';
 import { SITE_HEADER_HEIGHT } from '../components/SiteHeader';
+import { pages } from '../lib/seo';
 import {
   copyToClipboard,
   getCachedShopLive,
@@ -126,14 +128,28 @@ export default function ShopScreen() {
 
   if (!allowed) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color="#fff" />
-      </View>
+      <>
+        <SeoHead
+          title={pages.shop.title}
+          description={pages.shop.description}
+          path="/shop"
+          noindex
+        />
+        <View style={styles.centered}>
+          <ActivityIndicator color="#fff" />
+        </View>
+      </>
     );
   }
 
   return (
     <View style={styles.container}>
+      <SeoHead
+        title={pages.shop.title}
+        description={pages.shop.description}
+        path="/shop"
+        noindex
+      />
       <ScrollView
         contentContainerStyle={{
           paddingTop: SITE_HEADER_HEIGHT + 24,

@@ -12,8 +12,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import OssaiLogo from '../components/OssaiLogo';
 import PasswordGateControls from '../components/PasswordGateControls';
+import SeoHead from '../components/SeoHead';
 import { setStoredSignupId } from '../lib/accessSession';
+import { pages } from '../lib/seo';
 import { classifyContact } from '../lib/classifyContact';
 import { signupErrorMessage, submitSignup } from '../lib/signup';
 
@@ -136,6 +139,11 @@ export default function Index() {
     // 4. THE UI
     return (
         <View style={styles.container}>
+            <SeoHead
+                title={pages.home.title}
+                description={pages.home.description}
+                path="/"
+            />
             {Platform.OS === 'web' && (
                 <style type="text/css">{webStyle}</style>
             )}
@@ -238,11 +246,7 @@ export default function Index() {
                         <PasswordGateControls navigateOnUnlock={false} />
                     </View>
                     <View style={styles.headerContent}>
-                        <Image
-                            source={require('../assets/images/base_opt_white.png')}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
+                        <OssaiLogo size="lg" preferText />
                     </View>
                 </SafeAreaView>
             </BlurView>

@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { ProductImageFlip } from '../../components/ProductImageFlip';
 import { ProductVideo } from '../../components/ProductVideo';
+import SeoHead from '../../components/SeoHead';
 import { SITE_HEADER_HEIGHT } from '../../components/SiteHeader';
+import { SITE_NAME } from '../../lib/seo';
 import { fetchSiteStatus } from '../../lib/callables';
 import { getCachedShopLive, isSiteAccessGranted, setCachedShopLive } from '../../lib/accessSession';
 import { db } from '../../lib/firebase';
@@ -81,8 +83,20 @@ export default function ProductDetailScreen() {
 
   const canBuy = shopLive && !product.soldOut;
 
+  const productTitle = product.title.trim() || 'Piece';
+  const productDescription =
+    product.description.trim() ||
+    `${productTitle} — limited piece from ${SITE_NAME}.`;
+
   return (
     <View style={styles.container}>
+      <SeoHead
+        title={`${productTitle} — ${SITE_NAME}`}
+        description={productDescription}
+        path={`/shop/${product.slug}`}
+        noindex
+        ogImage={product.imageFront || undefined}
+      />
       <ScrollView
         contentContainerStyle={{
           paddingTop: SITE_HEADER_HEIGHT + 24,
