@@ -14,6 +14,39 @@ export interface WelcomeEmailOptions {
 const DEFAULT_ADDRESS = 'London, United Kingdom';
 const DEFAULT_CONTACT = 'ossai@ossai.co.uk';
 
+const BRIQUE_FALLBACK = "Georgia, 'Times New Roman', serif";
+
+function briqueFontUrl(siteUrl: string): string {
+  const base = siteUrl.replace(/\/$/, '');
+  return `${base}/fonts/Brique-Regular.otf`;
+}
+
+function briqueEmailStyles(siteUrl: string): string {
+  const fontUrl = briqueFontUrl(siteUrl);
+  return `
+  <style type="text/css">
+    @font-face {
+      font-family: 'Brique';
+      font-style: normal;
+      font-weight: normal;
+      src: url('${fontUrl}') format('opentype');
+    }
+    .ossai-brand {
+      font-family: 'Brique', ${BRIQUE_FALLBACK};
+      font-size: 34px;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      color: #ffffff;
+      line-height: 1;
+      mso-line-height-rule: exactly;
+    }
+  </style>`;
+}
+
+function brandWordmarkStyle(): string {
+  return `font-family:'Brique',${BRIQUE_FALLBACK};font-size:34px;letter-spacing:8px;text-transform:uppercase;line-height:1;mso-line-height-rule:exactly;`;
+}
+
 /**
  * Plain-text welcome email (multipart alternative improves inbox placement).
  */
@@ -86,7 +119,8 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="x-apple-disable-message-reformatting" />
-  <title>Ossai — Welcome</title>
+  <title>OSSAI — Welcome</title>
+  ${briqueEmailStyles(siteUrl)}
 </head>
 <body style="margin:0;padding:0;background-color:${bg};color:${text};-webkit-text-size-adjust:100%;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};">
@@ -96,7 +130,7 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
 
           <tr>
             <td align="center" style="padding:40px 0 28px 0;border-bottom:1px solid ${border};">
-              <div style="font-family:Georgia,'Times New Roman',serif;font-size:34px;letter-spacing:8px;text-transform:uppercase;color:${text};line-height:1;">Ossai</div>
+              <div class="ossai-brand" style="${brandWordmarkStyle()}color:${text};">OSSAI</div>
             </td>
           </tr>
 
