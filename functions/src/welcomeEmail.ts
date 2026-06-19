@@ -14,37 +14,16 @@ export interface WelcomeEmailOptions {
 const DEFAULT_ADDRESS = 'London, United Kingdom';
 const DEFAULT_CONTACT = 'ossai@ossai.co.uk';
 
-const BRIQUE_FALLBACK = "Georgia, 'Times New Roman', serif";
-
-function briqueFontUrl(siteUrl: string): string {
-  const base = siteUrl.replace(/\/$/, '');
-  return `${base}/fonts/Brique-Regular.otf`;
+function siteBase(siteUrl: string): string {
+  return siteUrl.replace(/\/$/, '');
 }
 
-function briqueEmailStyles(siteUrl: string): string {
-  const fontUrl = briqueFontUrl(siteUrl);
-  return `
-  <style type="text/css">
-    @font-face {
-      font-family: 'Brique';
-      font-style: normal;
-      font-weight: normal;
-      src: url('${fontUrl}') format('opentype');
-    }
-    .ossai-brand {
-      font-family: 'Brique', ${BRIQUE_FALLBACK};
-      font-size: 34px;
-      letter-spacing: 8px;
-      text-transform: uppercase;
-      color: #ffffff;
-      line-height: 1;
-      mso-line-height-rule: exactly;
-    }
-  </style>`;
-}
-
-function brandWordmarkStyle(): string {
-  return `font-family:'Brique',${BRIQUE_FALLBACK};font-size:34px;letter-spacing:8px;text-transform:uppercase;line-height:1;mso-line-height-rule:exactly;`;
+/** Brique wordmark as PNG — web fonts are blocked in Outlook/Gmail. */
+function brandWordmarkImg(siteUrl: string): string {
+  const src = `${siteBase(siteUrl)}/email/ossai-wordmark.png`;
+  return `<a href="${siteBase(siteUrl)}" target="_blank" style="text-decoration:none;">
+  <img src="${src}" alt="OSSAI" width="200" height="125" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;width:200px;max-width:100%;height:auto;" />
+</a>`;
 }
 
 /**
@@ -91,8 +70,8 @@ To stop marketing emails, reply to this message or email ${unsubscribeEmail}?sub
 /**
  * Renders the Ossai welcome email as email-safe HTML.
  *
- * Designed for deliverability: text-heavy layout, no spam triggers (no red
- * text, no ALL CAPS subject patterns in body), physical address + unsubscribe.
+ * Brand wordmark uses a hosted PNG (Brique design) because @font-face is blocked
+ * in Outlook, Gmail, and most webmail clients.
  */
 export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
   const {
@@ -120,7 +99,6 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="x-apple-disable-message-reformatting" />
   <title>OSSAI — Welcome</title>
-  ${briqueEmailStyles(siteUrl)}
 </head>
 <body style="margin:0;padding:0;background-color:${bg};color:${text};-webkit-text-size-adjust:100%;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};">
@@ -130,7 +108,7 @@ export function renderWelcomeEmail(options: WelcomeEmailOptions): string {
 
           <tr>
             <td align="center" style="padding:40px 0 28px 0;border-bottom:1px solid ${border};">
-              <div class="ossai-brand" style="${brandWordmarkStyle()}color:${text};">OSSAI</div>
+              ${brandWordmarkImg(siteUrl)}
             </td>
           </tr>
 
